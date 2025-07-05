@@ -4,6 +4,9 @@ export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
+    fontFamily: {
+      sans: ["Inter", "system-ui", "sans-serif"],
+    },
     extend: {
       borderRadius: {
         lg: "var(--radius)",
@@ -86,5 +89,5 @@ export default {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography")],
+  plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
 } satisfies Config;

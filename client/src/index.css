@@ -93,4 +93,25 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  /* Ensure proper text rendering */
+  * {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Fix for any missing focus styles */
+  *:focus {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
+
+  /* Ensure proper button and input styling */
+  button, input, textarea, select {
+    @apply font-sans;
+  }
 }
