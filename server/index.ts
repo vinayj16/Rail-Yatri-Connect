@@ -6,11 +6,14 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // Debug: Log all environment variables
 console.log('=== ENVIRONMENT VARIABLES DEBUG ===');
+console.log('Current working directory:', process.cwd());
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
 console.log('MONGODB_URI length:', process.env.MONGODB_URI?.length || 0);
+console.log('MONGODB_URI first 50 chars:', process.env.MONGODB_URI?.substring(0, 50) || 'NOT SET');
 console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('MONGODB') || key.includes('SESSION') || key.includes('NODE')));
+console.log('Total env vars count:', Object.keys(process.env).length);
 console.log('===================================');
 
 import express, { type Request, Response, NextFunction } from "express";
