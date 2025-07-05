@@ -7,10 +7,13 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { EmailService } from "./email-service";
+import MongoStore from "connect-mongo";
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends SelectUser {
+      _id: string;
+    }
   }
 }
 
@@ -40,7 +43,10 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "traingo-secret-key",
     resave: false,
     saveUninitialized: false,
-    store: storage.sessionStore,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI || "mongodb://localhost:27017/irctc_booking",
+      collectionName: "sessions"
+    }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
@@ -68,8 +74,8 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  passport.serializeUser((user, done) => done(null, user._id));
+  passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
       done(null, user);
@@ -110,7 +116,7 @@ export function setupAuth(app: Express) {
       });
 
       // Remove password from response
-      const { password, ...userWithoutPassword } = user;
+      const { password, ...userWithoutPassword } = user.toObject();
 
       // Send welcome email
       EmailService.sendWelcomeEmail(user)
@@ -140,7 +146,7 @@ export function setupAuth(app: Express) {
     const { password, ...userWithoutPassword } = req.user as SelectUser;
     
     // Update last login timestamp (in a production app)
-    // storage.updateLastLogin(req.user.id);
+    // storage.updateLastLogin(req.user._id);
     
     res.status(200).json({
       ...userWithoutPassword,
@@ -176,10 +182,10 @@ export function setupAuth(app: Express) {
       const { username, password, email, ...updateData } = req.body;
       
       // Update the user profile
-      const updatedUser = await storage.updateUser(req.user.id, updateData);
+      const updatedUser = await storage.updateUser(req.user._id, updateData);
       
       // Remove password from response
-      const { password: pwd, ...userWithoutPassword } = updatedUser;
+      const { password: pwd, ...userWithoutPassword } = updatedUser.toObject();
       
       res.json({
         ...userWithoutPassword,
@@ -204,14 +210,14 @@ export function setupAuth(app: Express) {
       }
       
       // Verify current password
-      const user = await storage.getUser(req.user.id);
+      const user = await storage.getUser(req.user._id);
       if (!user || !(await comparePasswords(currentPassword, user.password))) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
       
       // Update password
       const hashedNewPassword = await hashPassword(newPassword);
-      await storage.updateUserPassword(req.user.id, hashedNewPassword);
+      await storage.updateUserPassword(req.user._id, hashedNewPassword);
       
       res.json({ message: "Password changed successfully" });
     } catch (err) {

@@ -18,7 +18,7 @@ async function generateUniquePnr(): Promise<string> {
 }
 
 // Process a scheduled booking
-export async function processScheduledBooking(scheduledBookingId: number): Promise<Booking | null> {
+export async function processScheduledBooking(scheduledBookingId: string): Promise<Booking | null> {
   // Get the scheduled booking
   const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
   
@@ -89,7 +89,7 @@ export async function processScheduledBooking(scheduledBookingId: number): Promi
     // Add the passengers to the booking
     for (const passengerInfo of passengerData) {
       await storage.createPassenger({
-        bookingId: booking.id,
+        bookingId: booking._id.toString(),
         name: passengerInfo.name,
         age: passengerInfo.age,
         gender: passengerInfo.gender,
@@ -105,7 +105,7 @@ export async function processScheduledBooking(scheduledBookingId: number): Promi
       firstReminderAt.setHours(firstReminderAt.getHours() + (scheduledBooking.reminderFrequency || 24));
       
       await storage.createPaymentReminder({
-        bookingId: booking.id,
+        bookingId: booking._id.toString(),
         reminderType: 'email', // Default to email reminders
         reminderStatus: 'pending',
         reminderCount: 0,
@@ -130,7 +130,7 @@ export async function processAllDueScheduledBookings(): Promise<number> {
   let successCount = 0;
   
   for (const booking of dueBookings) {
-    const result = await processScheduledBooking(booking.id);
+    const result = await processScheduledBooking(booking._id.toString());
     if (result) {
       successCount++;
     }

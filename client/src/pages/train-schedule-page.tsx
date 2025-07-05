@@ -7,6 +7,21 @@ import { useState } from "react";
 
 export default function TrainSchedulePage() {
   const [selectedStation, setSelectedStation] = useState("NDLS");
+  const [searchParams, setSearchParams] = useState<any>(null);
+  const [trains, setTrains] = useState<any[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSearch = (values: any) => {
+    setSearchParams(values);
+    setHasSearched(true);
+    setIsLoading(true);
+    // Mock search - in real app this would call the API
+    setTimeout(() => {
+      setTrains([]);
+      setIsLoading(false);
+    }, 1000);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -27,14 +42,19 @@ export default function TrainSchedulePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Search Panel */}
             <div className="lg:col-span-2 space-y-6">
-              <TrainSearchForm onStationSelect={setSelectedStation} />
-              <TrainList />
+              <TrainSearchForm onSearch={handleSearch} />
+              <TrainList 
+                searchParams={searchParams || { fromStation: "", toStation: "", journeyDate: new Date() }}
+                trains={trains}
+                isLoading={isLoading}
+                hasSearched={hasSearched}
+              />
             </div>
 
             {/* Live Status Panel */}
             <div className="space-y-6">
               <PlatformStatus stationCode={selectedStation} />
-              <LiveTrainPlatform stationCode={selectedStation} />
+              <LiveTrainPlatform defaultStationCode={selectedStation} />
             </div>
           </div>
         </div>

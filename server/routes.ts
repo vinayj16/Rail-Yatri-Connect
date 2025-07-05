@@ -6,7 +6,7 @@ import {
   searchTrainSchema, 
   pnrStatusSchema, 
   chatbotSchema, 
-  trainLocationSchema,
+  insertTrainLocationSchema,
   tatkalBookingSchema,
   scheduledBookingRequestSchema,
   createTicketTransferSchema,
@@ -51,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get train details
   app.get("/api/trains/:id", async (req, res) => {
     try {
-      const trainId = parseInt(req.params.id);
+      const trainId = req.params.id;
       const train = await storage.getTrainById(trainId);
       
       if (!train) {
@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stops = await storage.getTrainStops(trainId);
       
       res.json({
-        ...train,
+        ...train.toObject(),
         classes,
         stops
       });
@@ -87,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get train and passenger details
       const train = await storage.getTrainById(booking.trainId);
-      const passengers = await storage.getPassengers(booking.id);
+      const passengers = await storage.getPassengers(booking._id.toString());
       
       res.json({
         pnr: booking.pnr,
@@ -120,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create booking
       const booking = await storage.createBooking({
-        userId: req.user!.id,
+        userId: req.user!._id.toString(),
         trainId,
         journeyDate,
         pnr: pnr.toString(),
@@ -132,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add passengers
       for (const passenger of passengers) {
         await storage.createPassenger({
-          bookingId: booking.id,
+          bookingId: booking._id.toString(),
           name: passenger.name,
           age: passenger.age,
           gender: passenger.gender,
@@ -143,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json({
-        bookingId: booking.id,
+        bookingId: booking._id.toString(),
         pnr: booking.pnr
       });
     } catch (error) {
@@ -158,16 +158,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "You must be logged in to view bookings" });
       }
       
-      const bookings = await storage.getBookings(req.user!.id);
+      const bookings = await storage.getBookings(req.user!._id.toString());
       
       // Get additional details for each booking
       const bookingsWithDetails = await Promise.all(
         bookings.map(async (booking) => {
           const train = await storage.getTrainById(booking.trainId);
-          const passengers = await storage.getPassengers(booking.id);
+          const passengers = await storage.getPassengers(booking._id.toString());
           
           return {
-            ...booking,
+            ...booking.toObject(),
             train,
             passengers
           };
@@ -237,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get train location
   app.get("/api/trains/:id/location", async (req, res) => {
     try {
-      const trainId = parseInt(req.params.id);
+      const trainId = req.params.id;
       const location = await storage.getTrainLocation(trainId);
       
       if (!location) {
@@ -266,8 +266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate request body
-      const trainId = parseInt(req.params.id);
-      const locationData = trainLocationSchema.parse(req.body);
+      const trainId = req.params.id;
+      const locationData = insertTrainLocationSchema.parse(req.body);
       
       // Set the trainId
       const updateData = {
@@ -298,11 +298,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "You must be logged in to view payment reminders" });
       }
       
-      const bookingId = parseInt(req.params.id);
-      const booking = await storage.getBookingByPnr(bookingId.toString());
+      const bookingId = req.params.id;
+      const booking = await storage.getBooking(bookingId);
       
       // Check if the booking belongs to the user
-      if (!booking || booking.userId !== req.user!.id) {
+      if (!booking || booking.userId !== req.user!._id.toString()) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -340,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create booking with tatkal flag
       const booking = await storage.createBooking({
-        userId: req.user!.id,
+        userId: req.user!._id.toString(),
         trainId,
         journeyDate,
         pnr: pnr.toString(),
@@ -356,11 +356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add passengers
       for (const passenger of passengers) {
         await storage.createPassenger({
-          bookingId: booking.id,
+          bookingId: booking._id.toString(),
           name: passenger.name,
           age: passenger.age,
           gender: passenger.gender,
-          berthPreference: passenger.berthPreference || null,
+          berthPreference: passenger.berthPreference || undefined,
           seatNumber: `${classCode}-${Math.floor(Math.random() * 72) + 1}`,
           status: 'CONFIRMED'
         });
@@ -368,16 +368,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create a payment reminder for tatkal booking
       await storage.createPaymentReminder({
-        bookingId: booking.id,
+        bookingId: booking._id.toString(),
         reminderCount: 0,
-        lastSentAt: null,
+        lastSentAt: undefined,
         nextReminderAt: new Date(now.getTime() + 60 * 60 * 1000), // 1 hour from now
         reminderType: 'SMS',
         reminderStatus: 'Scheduled'
       });
       
       res.status(201).json({
-        bookingId: booking.id,
+        bookingId: booking._id.toString(),
         pnr: booking.pnr,
         paymentDueDate: booking.paymentDueDate
       });
@@ -409,7 +409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create scheduled booking
       const scheduledBooking = await storage.createScheduledBooking({
-        userId: req.user!.id,
+        userId: req.user!._id.toString(),
         trainId,
         journeyDate,
         classCode,
@@ -444,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "You must be logged in to view scheduled bookings" });
       }
       
-      const scheduledBookings = await storage.getScheduledBookings(req.user!.id);
+      const scheduledBookings = await storage.getScheduledBookings(req.user!._id.toString());
       
       // Get train details for each booking
       const bookingsWithDetails = await Promise.all(
@@ -456,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (booking.status === 'completed' && booking.bookingId) {
             const completed = await storage.getBooking(booking.bookingId);
             if (completed) {
-              const passengers = await storage.getPassengers(completed.id);
+              const passengers = await storage.getPassengers(completed._id.toString());
               actualBooking = {
                 ...completed,
                 passengers
@@ -486,7 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "You must be logged in to process scheduled bookings" });
       }
       
-      const scheduledBookingId = parseInt(req.params.id);
+      const scheduledBookingId = req.params.id;
       
       // Verify the scheduled booking belongs to the user
       const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
@@ -494,7 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Scheduled booking not found" });
       }
       
-      if (scheduledBooking.userId !== req.user!.id) {
+      if (scheduledBooking.userId !== req.user!._id.toString()) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -506,7 +506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Return the booking details
-      const passengers = await storage.getPassengers(booking.id);
+      const passengers = await storage.getPassengers(booking._id.toString());
       
       res.json({
         booking: {
@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "You must be logged in to delete scheduled bookings" });
       }
       
-      const scheduledBookingId = parseInt(req.params.id);
+      const scheduledBookingId = req.params.id;
       
       // Verify the scheduled booking belongs to the user
       const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Scheduled booking not found" });
       }
       
-      if (scheduledBooking.userId !== req.user!.id) {
+      if (scheduledBooking.userId !== req.user!._id.toString()) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Booking not found" });
       }
       
-      if (booking.userId !== req.user!.id) {
+      if (booking.userId !== req.user!._id.toString()) {
         return res.status(403).json({ message: "You are not authorized to transfer this ticket" });
       }
       
@@ -596,14 +596,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the transfer
       const ticketTransfer = await storage.createTicketTransfer({
         bookingId,
-        senderId: req.user!.id,
+        senderId: req.user!._id.toString(),
         receiverEmail,
         status: "pending",
         transferCode,
-        message: message || null,
+        message: message || undefined,
         expiresAt,
-        transferType,
-        passengerIds: passengerIds || null
+        transferType: transferType as "full" | "partial",
+        passengerIds: passengerIds ? passengerIds.join(',') : undefined
       });
       
       // Send email to the recipient
@@ -614,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           booking,
           sender,
           receiverEmail,
-          transferType,
+          transferType as "full" | "partial",
           message || null
         );
       } catch (emailError) {
@@ -646,18 +646,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get transfers sent by the user
-      const transfers = await storage.getTicketTransfers(req.user!.id);
+      const transfers = await storage.getTicketTransfers(req.user!._id.toString());
       
       // Enhance with booking and passenger details
       const transfersWithDetails = await Promise.all(
         transfers.map(async (transfer) => {
           const booking = await storage.getBooking(transfer.bookingId);
           const train = booking ? await storage.getTrainById(booking.trainId) : null;
-          const passengers = booking ? await storage.getPassengers(booking.id) : [];
+          const passengers = booking ? await storage.getPassengers(booking._id.toString()) : [];
           
           // For partial transfers, filter passengers
           const transferPassengers = transfer.passengerIds 
-            ? passengers.filter(p => transfer.passengerIds.split(',').includes(p.id.toString()))
+            ? passengers.filter(p => transfer.passengerIds!.split(',').includes(p._id.toString()))
             : passengers;
           
           return {
@@ -689,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { transferCode, action } = processTicketTransferSchema.parse(req.body);
       
       // Find the transfer by code
-      const transfers = await storage.getTicketTransfers(0); // Get all transfers
+      const transfers = await storage.getTicketTransfers(req.user!._id.toString()); // Get all transfers
       const transfer = transfers.find(t => t.transferCode === transferCode);
       
       if (!transfer) {
@@ -716,7 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Update the booking ownership
-        await storage.updateBooking(booking.id, { userId: req.user!.id });
+        await storage.updateBooking(booking._id.toString(), { userId: req.user!._id.toString() });
         
         // Update transfer status
         await storage.updateTicketTransfer(transfer.id, { 
@@ -727,7 +727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ 
           message: "Transfer accepted successfully",
           booking: {
-            id: booking.id,
+            id: booking._id.toString(),
             pnr: booking.pnr
           }
         });

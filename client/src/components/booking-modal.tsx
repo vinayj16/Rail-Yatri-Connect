@@ -79,7 +79,7 @@ export default function BookingModal({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       passengers: [
-        { name: "", age: undefined, gender: "", berthPreference: "" }
+        { name: "", age: 0, gender: "", berthPreference: "" }
       ],
       contact: {
         mobile: user?.phone || "",
@@ -135,7 +135,7 @@ export default function BookingModal({
     
     form.setValue("passengers", [
       ...passengers,
-      { name: "", age: undefined, gender: "", berthPreference: "" }
+      { name: "", age: 0, gender: "", berthPreference: "" }
     ]);
   };
   

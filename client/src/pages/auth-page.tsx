@@ -90,7 +90,7 @@ export default function AuthPage() {
       phone: "",
       username: "",
       password: "",
-      acceptTerms: false,
+      acceptTerms: true,
     },
   });
 

@@ -1,5 +1,6 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, doublePrecision } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+import mongoose from "mongoose";
+
 // Chatbot schema
 export const chatbotSchema = z.object({
   message: z.string().min(1, "Message is required"),
@@ -7,423 +8,543 @@ export const chatbotSchema = z.object({
 
 export type ChatbotMessage = z.infer<typeof chatbotSchema>;
 
-import { z } from "zod";
-
 // User schema
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  fullName: text("full_name").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone").notNull(),
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
-  role: text("role").default("user"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  lastLogin: timestamp("last_login"),
-  phoneNumber: text("phone_number"),
-});
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  fullName: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String, required: true },
+  stripeCustomerId: { type: String },
+  stripeSubscriptionId: { type: String },
+  role: { type: String, default: "user" },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: { type: Date },
+  phoneNumber: { type: String },
+}, { timestamps: true });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  fullName: true,
-  email: true,
-  phone: true,
-  role: true,
-  isActive: true,
-  phoneNumber: true,
-  stripeCustomerId: true,
-  stripeSubscriptionId: true,
+export const User = mongoose.model('User', userSchema);
+
+export const insertUserSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().min(1),
+  role: z.string().optional(),
+  isActive: z.boolean().optional(),
+  phoneNumber: z.string().optional(),
+  stripeCustomerId: z.string().optional(),
+  stripeSubscriptionId: z.string().optional(),
 });
 
 // Station schema
-export const stations = pgTable("stations", {
-  id: serial("id").primaryKey(),
-  code: text("code").notNull().unique(),
-  name: text("name").notNull(),
-  city: text("city").notNull(),
-});
+const stationSchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  city: { type: String, required: true },
+}, { timestamps: true });
 
-export const insertStationSchema = createInsertSchema(stations).pick({
-  code: true,
-  name: true,
-  city: true,
+export const Station = mongoose.model('Station', stationSchema);
+
+export const insertStationSchema = z.object({
+  code: z.string().min(1),
+  name: z.string().min(1),
+  city: z.string().min(1),
 });
 
 // Train schema
-export const trainSchedules = pgTable("train_schedules", {
-  id: serial("id").primaryKey(),
-  trainId: integer("train_id").notNull(),
-  departureStation: text("departure_station").notNull(),
-  arrivalStation: text("arrival_station").notNull(),
-  departureTime: timestamp("departure_time").notNull(),
-  arrivalTime: timestamp("arrival_time").notNull(),
-  fare: integer("fare").notNull(),
-  availableSeats: integer("available_seats").notNull(),
-  status: text("status").default("On Time"),
-  platform: text("platform"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+const trainSchema = new mongoose.Schema({
+  number: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  sourceStationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Station', required: true },
+  destinationStationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Station', required: true },
+  departureTime: { type: String, required: true },
+  arrivalTime: { type: String, required: true },
+  duration: { type: String, required: true },
+  runDays: { type: String, required: true },
+  trainType: { type: String, required: true },
+  hasWifi: { type: Boolean, default: false },
+  hasPantry: { type: Boolean, default: false },
+  hasChargingPoint: { type: Boolean, default: false },
+  hasBedroll: { type: Boolean, default: false },
+  avgSpeed: { type: Number, default: 60 },
+  distance: { type: Number, default: 0 },
+  rake: { type: String, default: "LHB" },
+  pantryType: { type: String },
+  tatkalAvailable: { type: Boolean, default: true },
+  tatkalOpeningTime: { type: String, default: "10:00" },
+  liveTrackingEnabled: { type: Boolean, default: false },
+}, { timestamps: true });
+
+export const Train = mongoose.model('Train', trainSchema);
+
+export const insertTrainSchema = z.object({
+  number: z.string().min(1),
+  name: z.string().min(1),
+  sourceStationId: z.string().min(1),
+  destinationStationId: z.string().min(1),
+  departureTime: z.string().min(1),
+  arrivalTime: z.string().min(1),
+  duration: z.string().min(1),
+  runDays: z.string().min(1),
+  trainType: z.string().min(1),
+  hasWifi: z.boolean().optional(),
+  hasPantry: z.boolean().optional(),
+  hasChargingPoint: z.boolean().optional(),
+  hasBedroll: z.boolean().optional(),
+  avgSpeed: z.number().optional(),
+  distance: z.number().optional(),
+  rake: z.string().optional(),
+  pantryType: z.string().optional(),
+  tatkalAvailable: z.boolean().optional(),
+  tatkalOpeningTime: z.string().optional(),
+  liveTrackingEnabled: z.boolean().optional(),
 });
 
-export const trains = pgTable("trains", {
-  id: serial("id").primaryKey(),
-  number: text("number").notNull().unique(),
-  name: text("name").notNull(),
-  sourceStationId: integer("source_station_id").notNull(),
-  destinationStationId: integer("destination_station_id").notNull(),
-  departureTime: text("departure_time").notNull(),
-  arrivalTime: text("arrival_time").notNull(),
-  duration: text("duration").notNull(),
-  runDays: text("run_days").notNull(),
-  trainType: text("train_type").notNull(),
-  hasWifi: boolean("has_wifi").default(false),
-  hasPantry: boolean("has_pantry").default(false),
-  hasChargingPoint: boolean("has_charging_point").default(false),
-  hasBedroll: boolean("has_bedroll").default(false),
-  avgSpeed: integer("avg_speed").default(60), // Average speed in km/h
-  distance: integer("distance").default(0), // Total distance in km
-  rake: text("rake").default("LHB"), // LHB or ICF
-  pantryType: text("pantry_type"), // Mini pantry, Full Pantry, etc.
-  tatkalAvailable: boolean("tatkal_available").default(true),
-  tatkalOpeningTime: text("tatkal_opening_time").default("10:00"), // Opening time for tatkal booking
-  liveTrackingEnabled: boolean("live_tracking_enabled").default(false),
+// TrainStop schema
+const trainStopSchema = new mongoose.Schema({
+  trainId: { type: mongoose.Schema.Types.ObjectId, ref: 'Train', required: true },
+  stationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Station', required: true },
+  arrivalTime: { type: String },
+  departureTime: { type: String },
+  dayCount: { type: Number, default: 0 },
+  haltTime: { type: String },
+  distance: { type: Number, default: 0 },
+}, { timestamps: true });
+
+export const TrainStop = mongoose.model('TrainStop', trainStopSchema);
+
+export const insertTrainStopSchema = z.object({
+  trainId: z.string().min(1),
+  stationId: z.string().min(1),
+  arrivalTime: z.string().optional(),
+  departureTime: z.string().optional(),
+  dayCount: z.number().optional(),
+  haltTime: z.string().optional(),
+  distance: z.number().optional(),
 });
 
-export const insertTrainSchema = createInsertSchema(trains).pick({
-  number: true,
-  name: true,
-  sourceStationId: true,
-  destinationStationId: true,
-  departureTime: true,
-  arrivalTime: true,
-  duration: true,
-  runDays: true,
-  trainType: true,
-  hasWifi: true,
-  hasPantry: true,
-  hasChargingPoint: true,
-  hasBedroll: true,
-  avgSpeed: true,
-  distance: true,
-  rake: true,
-  pantryType: true,
-  tatkalAvailable: true,
-  tatkalOpeningTime: true,
-  liveTrackingEnabled: true,
-});
+// TrainClass schema
+const trainClassSchema = new mongoose.Schema({
+  trainId: { type: mongoose.Schema.Types.ObjectId, ref: 'Train', required: true },
+  classCode: { type: String, required: true },
+  className: { type: String, required: true },
+  fare: { type: Number, required: true },
+  totalSeats: { type: Number, required: true },
+  availableSeats: { type: Number, required: true },
+}, { timestamps: true });
 
-// TrainStop schema (intermediate stops for a train)
-export const trainStops = pgTable("train_stops", {
-  id: serial("id").primaryKey(),
-  trainId: integer("train_id").notNull(),
-  stationId: integer("station_id").notNull(),
-  arrivalTime: text("arrival_time"),
-  departureTime: text("departure_time"),
-  dayCount: integer("day_count").default(0),
-  haltTime: text("halt_time"),
-  distance: integer("distance").default(0),
-});
+export const TrainClass = mongoose.model('TrainClass', trainClassSchema);
 
-export const insertTrainStopSchema = createInsertSchema(trainStops).pick({
-  trainId: true,
-  stationId: true,
-  arrivalTime: true,
-  departureTime: true,
-  dayCount: true,
-  haltTime: true,
-  distance: true,
-});
-
-// TrainClass schema (available classes for a train)
-export const trainClasses = pgTable("train_classes", {
-  id: serial("id").primaryKey(),
-  trainId: integer("train_id").notNull(),
-  classCode: text("class_code").notNull(),
-  className: text("class_name").notNull(),
-  fare: integer("fare").notNull(),
-  totalSeats: integer("total_seats").notNull(),
-  availableSeats: integer("available_seats").notNull(),
-});
-
-export const insertTrainClassSchema = createInsertSchema(trainClasses).pick({
-  trainId: true,
-  classCode: true,
-  className: true,
-  fare: true,
-  totalSeats: true,
-  availableSeats: true,
+export const insertTrainClassSchema = z.object({
+  trainId: z.string().min(1),
+  classCode: z.string().min(1),
+  className: z.string().min(1),
+  fare: z.number().min(0),
+  totalSeats: z.number().min(0),
+  availableSeats: z.number(),
 });
 
 // Booking schema
-export const bookings = pgTable("bookings", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  trainId: integer("train_id").notNull(),
-  journeyDate: text("journey_date").notNull(),
-  pnr: text("pnr").notNull().unique(),
-  status: text("status").notNull(),
-  classCode: text("class_code").notNull(),
-  totalFare: integer("total_fare").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  bookingType: text("booking_type").default("general"), // general, tatkal
-  paymentStatus: text("payment_status").default("pending"), // pending, completed, failed
-  paymentId: text("payment_id"),
-  paymentDueDate: timestamp("payment_due_date"),
+const bookingSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  trainId: { type: mongoose.Schema.Types.ObjectId, ref: 'Train', required: true },
+  journeyDate: { type: String, required: true },
+  pnr: { type: String, required: true, unique: true },
+  status: { type: String, required: true },
+  classCode: { type: String, required: true },
+  totalFare: { type: Number, required: true },
+  bookingType: { type: String, default: "general" },
+  paymentStatus: { type: String, default: "pending" },
+  paymentId: { type: String },
+  paymentDueDate: { type: Date },
+}, { timestamps: true });
+
+export const Booking = mongoose.model('Booking', bookingSchema);
+
+export const insertBookingSchema = z.object({
+  userId: z.string().min(1),
+  trainId: z.string().min(1),
+  journeyDate: z.string().min(1),
+  pnr: z.string().min(1),
+  status: z.string().min(1),
+  classCode: z.string().min(1),
+  totalFare: z.number().min(0),
+  bookingType: z.string().optional(),
+  paymentStatus: z.string().optional(),
+  paymentId: z.string().optional(),
+  paymentDueDate: z.date().optional(),
 });
 
-export const insertBookingSchema = createInsertSchema(bookings).pick({
-  userId: true,
-  trainId: true,
-  journeyDate: true,
-  pnr: true,
-  status: true,
-  classCode: true,
-  totalFare: true,
-  bookingType: true,
-  paymentStatus: true,
-  paymentId: true,
-  paymentDueDate: true,
+// Passenger schema
+const passengerSchema = new mongoose.Schema({
+  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
+  name: { type: String, required: true },
+  age: { type: Number, required: true },
+  gender: { type: String, required: true },
+  berthPreference: { type: String },
+  seatNumber: { type: String },
+  status: { type: String, default: "Confirmed" },
+}, { timestamps: true });
+
+export const Passenger = mongoose.model('Passenger', passengerSchema);
+
+export const insertPassengerSchema = z.object({
+  bookingId: z.string().min(1),
+  name: z.string().min(1),
+  age: z.number().min(1).max(120),
+  gender: z.string().min(1),
+  berthPreference: z.string().optional(),
+  seatNumber: z.string().optional(),
+  status: z.string().optional(),
 });
 
-// Passenger schema (passengers in a booking)
-export const passengers = pgTable("passengers", {
-  id: serial("id").primaryKey(),
-  bookingId: integer("booking_id").notNull(),
-  name: text("name").notNull(),
-  age: integer("age").notNull(),
-  gender: text("gender").notNull(),
-  berthPreference: text("berth_preference"),
-  seatNumber: text("seat_number"),
-  status: text("status").notNull(),
-});
+// TrainLocation schema
+const trainLocationSchema = new mongoose.Schema({
+  trainId: { type: mongoose.Schema.Types.ObjectId, ref: 'Train', required: true },
+  currentStationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Station', required: true },
+  nextStationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Station', required: true },
+  status: { type: String, required: true },
+  delay: { type: Number, default: 0 },
+  latitude: { type: String },
+  longitude: { type: String },
+  speed: { type: Number },
+  updatedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
 
-export const insertPassengerSchema = createInsertSchema(passengers).pick({
-  bookingId: true,
-  name: true,
-  age: true,
-  gender: true,
-  berthPreference: true,
-  seatNumber: true,
-  status: true,
-});
+export const TrainLocation = mongoose.model('TrainLocation', trainLocationSchema);
 
-// Type exports
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
-export type Station = typeof stations.$inferSelect;
-export type InsertStation = z.infer<typeof insertStationSchema>;
-
-export type Train = typeof trains.$inferSelect;
-export type InsertTrain = z.infer<typeof insertTrainSchema>;
-
-export type TrainStop = typeof trainStops.$inferSelect;
-export type InsertTrainStop = z.infer<typeof insertTrainStopSchema>;
-
-export type TrainClass = typeof trainClasses.$inferSelect;
-export type InsertTrainClass = z.infer<typeof insertTrainClassSchema>;
-
-export type Booking = typeof bookings.$inferSelect;
-export type InsertBooking = z.infer<typeof insertBookingSchema>;
-
-export type Passenger = typeof passengers.$inferSelect;
-export type InsertPassenger = z.infer<typeof insertPassengerSchema>;
-
-// Search train schema for request validation
-export const searchTrainSchema = z.object({
-  fromStation: z.string().min(1, { message: "Source station is required" }),
-  toStation: z.string().min(1, { message: "Destination station is required" }),
-  journeyDate: z.string().min(1, { message: "Journey date is required" }),
-  travelClass: z.string().optional(),
-});
-
-export type SearchTrainParams = z.infer<typeof searchTrainSchema>;
-
-// PNR status schema for request validation
-export const pnrStatusSchema = z.object({
-  pnrNumber: z.string().length(10, { message: "PNR must be 10 digits" }),
-});
-
-export type PnrStatusParams = z.infer<typeof pnrStatusSchema>;
-
-// Live train location schema
-export const trainLocations = pgTable("train_locations", {
-  id: serial("id").primaryKey(),
-  trainId: integer("train_id").notNull(),
-  currentStationId: integer("current_station_id").notNull(),
-  nextStationId: integer("next_station_id").notNull(),
-  status: text("status").notNull(), // running, arrived, departed, delayed, cancelled
-  delay: integer("delay").default(0), // delay in minutes
-  updatedAt: timestamp("updated_at").defaultNow(),
-  latitude: text("latitude"),
-  longitude: text("longitude"),
-  speed: integer("speed").default(0), // current speed in km/h
-});
-
-export const insertTrainLocationSchema = createInsertSchema(trainLocations).pick({
-  trainId: true,
-  currentStationId: true,
-  nextStationId: true,
-  status: true,
-  delay: true,
-  latitude: true,
-  longitude: true,
-  speed: true,
-});
-
-export type TrainLocation = typeof trainLocations.$inferSelect;
-export type InsertTrainLocation = z.infer<typeof insertTrainLocationSchema>;
-
-// Payment reminder schema
-export const paymentReminders = pgTable("payment_reminders", {
-  id: serial("id").primaryKey(),
-  bookingId: integer("booking_id").notNull().unique(),
-  reminderType: text("reminder_type").notNull(), // email, sms, push
-  reminderStatus: text("reminder_status").notNull(), // pending, sent, failed
-  reminderCount: integer("reminder_count").default(0),
-  lastSentAt: timestamp("last_sent_at"),
-  nextReminderAt: timestamp("next_reminder_at"),
-});
-
-export const insertPaymentReminderSchema = createInsertSchema(paymentReminders).pick({
-  bookingId: true,
-  reminderType: true,
-  reminderStatus: true,
-  reminderCount: true,
-  lastSentAt: true,
-  nextReminderAt: true,
-});
-
-// Update train location schema with lastUpdated field
-export const trainLocationSchema = z.object({
-  trainId: z.number(),
-  currentStationId: z.number(),
-  nextStationId: z.number(),
-  status: z.string(),
+export const insertTrainLocationSchema = z.object({
+  trainId: z.string().min(1),
+  currentStationId: z.string().min(1),
+  nextStationId: z.string().min(1),
+  status: z.string().min(1),
+  delay: z.number().optional(),
   latitude: z.string().optional(),
   longitude: z.string().optional(),
   speed: z.number().optional(),
-  delay: z.number().optional(),
+  updatedAt: z.date().optional(),
 });
 
-// Tatkal booking schema
-export const tatkalBookingSchema = z.object({
-  trainId: z.number(),
-  journeyDate: z.string(),
-  classCode: z.string(),
-  passengers: z.array(z.object({
-    name: z.string(),
-    age: z.number(),
-    gender: z.string(),
+// PaymentReminder schema
+const paymentReminderSchema = new mongoose.Schema({
+  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
+  reminderCount: { type: Number, default: 0 },
+  lastSentAt: { type: Date },
+  nextReminderAt: { type: Date },
+  reminderType: { type: String, default: "SMS" },
+  reminderStatus: { type: String, default: "pending" },
+}, { timestamps: true });
+
+export const PaymentReminder = mongoose.model('PaymentReminder', paymentReminderSchema);
+
+export const insertPaymentReminderSchema = z.object({
+  bookingId: z.string().min(1),
+  reminderCount: z.number().optional(),
+  lastSentAt: z.date().optional(),
+  nextReminderAt: z.date().optional(),
+  reminderType: z.string().optional(),
+  reminderStatus: z.string().optional(),
+});
+
+// ScheduledBooking schema
+const scheduledBookingSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  trainId: { type: mongoose.Schema.Types.ObjectId, ref: 'Train', required: true },
+  journeyDate: { type: String, required: true },
+  classCode: { type: String, required: true },
+  scheduledAt: { type: Date, required: true },
+  status: { type: String, default: "pending" },
+  passengerData: { type: [Object], required: true },
+  bookingType: { type: String, default: "general" },
+  paymentRemindersEnabled: { type: Boolean, default: false },
+  reminderFrequency: { type: Number, default: 24 },
+  maxReminders: { type: Number, default: 3 },
+  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
+}, { timestamps: true });
+
+export const ScheduledBooking = mongoose.model('ScheduledBooking', scheduledBookingSchema);
+
+export const insertScheduledBookingSchema = z.object({
+  userId: z.string().min(1),
+  trainId: z.string().min(1),
+  journeyDate: z.string().min(1),
+  classCode: z.string().min(1),
+  scheduledAt: z.date(),
+  status: z.string().optional(),
+  passengerData: z.array(z.object({
+    name: z.string().min(1),
+    age: z.number().min(1).max(120),
+    gender: z.string().min(1),
     berthPreference: z.string().optional(),
   })),
-  totalFare: z.number(),
+  bookingType: z.string().optional(),
+  paymentRemindersEnabled: z.boolean().optional(),
+  reminderFrequency: z.number().optional(),
+  maxReminders: z.number().optional(),
+  bookingId: z.string().optional(),
 });
 
-// Scheduled Booking schema
-export const scheduledBookings = pgTable("scheduled_bookings", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  trainId: integer("train_id").notNull(),
-  journeyDate: text("journey_date").notNull(),
-  classCode: text("class_code").notNull(),
-  scheduledAt: timestamp("scheduled_at").notNull(), // When to attempt the booking
-  status: text("status").notNull().default("pending"), // pending, completed, failed
-  bookingId: integer("booking_id"), // Reference to the booking once created
-  passengerData: jsonb("passenger_data").notNull(), // JSON array of passenger details
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  bookingType: text("booking_type").default("general"), // general, tatkal
-  paymentRemindersEnabled: boolean("payment_reminders_enabled").default(true),
-  reminderFrequency: integer("reminder_frequency").default(24), // Hours between reminders
-  maxReminders: integer("max_reminders").default(3), // Maximum number of reminders to send
-});
+// TicketTransfer schema
+const ticketTransferSchema = new mongoose.Schema({
+  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  receiverEmail: { type: String, required: true },
+  status: { type: String, default: "pending" },
+  transferCode: { type: String, required: true, unique: true },
+  message: { type: String },
+  expiresAt: { type: Date, required: true },
+  transferType: { type: String, required: true },
+  passengerIds: { type: String },
+  completedAt: { type: Date },
+}, { timestamps: true });
 
-export const insertScheduledBookingSchema = createInsertSchema(scheduledBookings).pick({
-  userId: true,
-  trainId: true,
-  journeyDate: true,
-  classCode: true,
-  scheduledAt: true,
-  status: true,
-  passengerData: true,
-  bookingType: true,
-  paymentRemindersEnabled: true,
-  reminderFrequency: true,
-  maxReminders: true,
-});
+export const TicketTransfer = mongoose.model('TicketTransfer', ticketTransferSchema);
 
-export type ScheduledBooking = typeof scheduledBookings.$inferSelect;
-export type InsertScheduledBooking = z.infer<typeof insertScheduledBookingSchema>;
-
-// Schema for scheduled booking request
-export const scheduledBookingRequestSchema = z.object({
-  trainId: z.number(),
-  journeyDate: z.string(),
-  classCode: z.string(),
-  scheduledAt: z.string(), // ISO datetime string for when to book
-  passengers: z.array(z.object({
-    name: z.string(),
-    age: z.number(),
-    gender: z.string(),
-    berthPreference: z.string().optional(),
-  })),
-  bookingType: z.enum(["general", "tatkal"]).default("general"),
-  paymentRemindersEnabled: z.boolean().default(true),
-  reminderFrequency: z.number().default(24),
-  maxReminders: z.number().default(3),
-});
-
-export type PaymentReminder = typeof paymentReminders.$inferSelect;
-export type InsertPaymentReminder = z.infer<typeof insertPaymentReminderSchema>;
-
-// Ticket Transfer schema
-export const ticketTransfers = pgTable("ticket_transfers", {
-  id: serial("id").primaryKey(),
-  bookingId: integer("booking_id").notNull(),
-  senderId: integer("sender_id").notNull(), // User who is transferring the ticket
-  receiverEmail: text("receiver_email").notNull(), // Email of the recipient
-  status: text("status").notNull().default("pending"), // pending, accepted, rejected, expired
-  transferCode: text("transfer_code").notNull(), // Unique code for verifying the transfer
-  message: text("message"), // Optional message from sender
-  createdAt: timestamp("created_at").defaultNow(),
-  expiresAt: timestamp("expires_at"), // When the transfer offer expires
-  completedAt: timestamp("completed_at"), // When the transfer was completed/rejected
-  transferType: text("transfer_type").default("full"), // full, partial (for specific passengers)
-  passengerIds: text("passenger_ids"), // Comma-separated IDs of passengers for partial transfers
-});
-
-export const insertTicketTransferSchema = createInsertSchema(ticketTransfers).pick({
-  bookingId: true,
-  senderId: true,
-  receiverEmail: true,
-  status: true,
-  transferCode: true,
-  message: true,
-  expiresAt: true,
-  transferType: true,
-  passengerIds: true,
-});
-
-export type TicketTransfer = typeof ticketTransfers.$inferSelect;
-export type InsertTicketTransfer = z.infer<typeof insertTicketTransferSchema>;
-
-// Schema for ticket transfer request
-export const createTicketTransferSchema = z.object({
-  bookingId: z.number(),
-  receiverEmail: z.string().email({ message: "Invalid email address" }),
+export const insertTicketTransferSchema = z.object({
+  bookingId: z.string().min(1),
+  senderId: z.string().min(1),
+  receiverEmail: z.string().email(),
+  status: z.string().optional(),
+  transferCode: z.string().min(1),
   message: z.string().optional(),
-  transferType: z.enum(["full", "partial"]).default("full"),
-  passengerIds: z.string().optional(), // Comma-separated list of passenger IDs for partial transfers
-  expirationHours: z.number().default(24) // How many hours until the transfer expires
+  expiresAt: z.date(),
+  transferType: z.string().min(1),
+  passengerIds: z.string().optional(),
+  completedAt: z.date().optional(),
 });
 
-// Schema for accepting/rejecting ticket transfers
+// Search schemas
+export const searchTrainSchema = z.object({
+  fromStation: z.string().min(1),
+  toStation: z.string().min(1),
+  journeyDate: z.string().min(1),
+  travelClass: z.string().optional(),
+});
+
+export const pnrStatusSchema = z.object({
+  pnrNumber: z.string().length(10, "PNR must be exactly 10 digits"),
+});
+
+export const tatkalBookingSchema = z.object({
+  trainId: z.string().min(1),
+  journeyDate: z.string().min(1),
+  classCode: z.string().min(1),
+  passengers: z.array(z.object({
+    name: z.string().min(1),
+    age: z.number().min(1).max(120),
+    gender: z.string().min(1),
+    berthPreference: z.string().optional(),
+  })),
+  totalFare: z.number().min(0),
+});
+
+export const scheduledBookingRequestSchema = z.object({
+  trainId: z.string().min(1),
+  journeyDate: z.string().min(1),
+  classCode: z.string().min(1),
+  scheduledAt: z.date(),
+  passengers: z.array(z.object({
+    name: z.string().min(1),
+    age: z.number().min(1).max(120),
+    gender: z.string().min(1),
+    berthPreference: z.string().optional(),
+  })),
+  bookingType: z.string().optional(),
+  paymentRemindersEnabled: z.boolean().optional(),
+  reminderFrequency: z.number().optional(),
+  maxReminders: z.number().optional(),
+});
+
+export const createTicketTransferSchema = z.object({
+  bookingId: z.string().min(1),
+  receiverEmail: z.string().email(),
+  message: z.string().optional(),
+  transferType: z.string().min(1),
+  passengerIds: z.array(z.string()).optional(),
+  expirationHours: z.number().min(1).max(168),
+});
+
 export const processTicketTransferSchema = z.object({
-  transferCode: z.string(),
+  transferCode: z.string().min(1),
   action: z.enum(["accept", "reject"]),
 });
+
+// Type exports
+export type User = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  username: string;
+  password: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  role: string;
+  isActive: boolean;
+  createdAt: Date;
+  lastLogin?: Date;
+  phoneNumber?: string;
+};
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Station = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  code: string;
+  name: string;
+  city: string;
+};
+
+export type InsertStation = z.infer<typeof insertStationSchema>;
+
+export type Train = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  number: string;
+  name: string;
+  sourceStationId: string;
+  destinationStationId: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+  runDays: string;
+  trainType: string;
+  hasWifi: boolean;
+  hasPantry: boolean;
+  hasChargingPoint: boolean;
+  hasBedroll: boolean;
+  avgSpeed: number;
+  distance: number;
+  rake: string;
+  pantryType?: string;
+  tatkalAvailable: boolean;
+  tatkalOpeningTime: string;
+  liveTrackingEnabled: boolean;
+};
+
+export type InsertTrain = z.infer<typeof insertTrainSchema>;
+
+export type TrainStop = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  trainId: string;
+  stationId: string;
+  arrivalTime?: string;
+  departureTime?: string;
+  dayCount: number;
+  haltTime?: string;
+  distance: number;
+};
+
+export type InsertTrainStop = z.infer<typeof insertTrainStopSchema>;
+
+export type TrainClass = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  trainId: string;
+  classCode: string;
+  className: string;
+  fare: number;
+  totalSeats: number;
+  availableSeats: number;
+};
+
+export type InsertTrainClass = z.infer<typeof insertTrainClassSchema>;
+
+export type Booking = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  userId: string;
+  trainId: string;
+  journeyDate: string;
+  pnr: string;
+  status: string;
+  classCode: string;
+  totalFare: number;
+  bookingType: string;
+  paymentStatus: string;
+  paymentId?: string;
+  paymentDueDate?: Date;
+  createdAt: Date;
+};
+
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
+
+export type Passenger = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  bookingId: string;
+  name: string;
+  age: number;
+  gender: string;
+  berthPreference?: string;
+  seatNumber?: string;
+  status: string;
+};
+
+export type InsertPassenger = z.infer<typeof insertPassengerSchema>;
+
+export type SearchTrainParams = z.infer<typeof searchTrainSchema>;
+
+export type PnrStatusParams = z.infer<typeof pnrStatusSchema>;
+
+export type TrainLocation = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  trainId: string;
+  currentStationId: string;
+  nextStationId: string;
+  status: string;
+  delay: number;
+  latitude?: string;
+  longitude?: string;
+  speed?: number;
+  updatedAt: Date;
+};
+
+export type InsertTrainLocation = z.infer<typeof insertTrainLocationSchema>;
+
+export type ScheduledBooking = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  userId: string;
+  trainId: string;
+  journeyDate: string;
+  classCode: string;
+  scheduledAt: Date;
+  status: string;
+  passengerData: any[];
+  bookingType: string;
+  paymentRemindersEnabled: boolean;
+  reminderFrequency: number;
+  maxReminders: number;
+  bookingId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type InsertScheduledBooking = z.infer<typeof insertScheduledBookingSchema>;
+
+export type PaymentReminder = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  bookingId: string;
+  reminderCount: number;
+  lastSentAt?: Date;
+  nextReminderAt?: Date;
+  reminderType: string;
+  reminderStatus: string;
+};
+
+export type InsertPaymentReminder = z.infer<typeof insertPaymentReminderSchema>;
+
+export type TicketTransfer = mongoose.Document & {
+  _id: mongoose.Types.ObjectId;
+  bookingId: string;
+  senderId: string;
+  receiverEmail: string;
+  status: string;
+  transferCode: string;
+  message?: string;
+  expiresAt: Date;
+  transferType: string;
+  passengerIds?: string;
+  completedAt?: Date;
+};
+
+export type InsertTicketTransfer = z.infer<typeof insertTicketTransferSchema>;

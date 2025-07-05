@@ -1,769 +1,527 @@
 import { 
-  users, type User, type InsertUser,
-  stations, type Station, type InsertStation, 
-  trains, type Train, type InsertTrain,
-  trainStops, type TrainStop, type InsertTrainStop,
-  trainClasses, type TrainClass, type InsertTrainClass,
-  bookings, type Booking, type InsertBooking,
-  passengers, type Passenger, type InsertPassenger,
-  trainLocations, type TrainLocation, type InsertTrainLocation,
-  paymentReminders, type PaymentReminder, type InsertPaymentReminder,
-  scheduledBookings, type ScheduledBooking, type InsertScheduledBooking,
-  type SearchTrainParams
+  User, InsertUser, Station, InsertStation, 
+  Train, InsertTrain, TrainStop, InsertTrainStop,
+  TrainClass, InsertTrainClass, Booking, InsertBooking,
+  Passenger, InsertPassenger, TrainLocation, InsertTrainLocation,
+  PaymentReminder, InsertPaymentReminder, ScheduledBooking, InsertScheduledBooking,
+  SearchTrainParams, TicketTransfer, InsertTicketTransfer,
+  User as UserModel, Station as StationModel, Train as TrainModel, 
+  TrainStop as TrainStopModel, TrainClass as TrainClassModel, 
+  Booking as BookingModel, Passenger as PassengerModel, 
+  TrainLocation as TrainLocationModel, PaymentReminder as PaymentReminderModel, 
+  ScheduledBooking as ScheduledBookingModel, TicketTransfer as TicketTransferModel
 } from "@shared/schema";
 
-import session from "express-session";
-import createMemoryStore from "memorystore";
+import { getChatbotResponse } from "./chatbot";
+import { mongoose } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const MongoStore = require("connect-mongo");
 
-// Define the storage interface
 export interface IStorage {
-  // Session store
-  sessionStore: session.Store;
-
+  sessionStore: any;
+  
   // User methods
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, userData: Partial<InsertUser>): Promise<User>;
-  updateUserPassword(id: number, hashedPassword: string): Promise<boolean>;
-  updateStripeCustomerId(id: number, customerId: string): Promise<User>;
-  updateUserStripeInfo(id: number, stripeInfo: { customerId: string, subscriptionId: string }): Promise<User>;
-
+  updateUser(id: string, userData: Partial<InsertUser>): Promise<User>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<boolean>;
+  updateStripeCustomerId(id: string, customerId: string): Promise<User>;
+  updateUserStripeInfo(id: string, stripeInfo: { customerId: string, subscriptionId: string }): Promise<User>;
+  
   // Station methods
   getStations(): Promise<Station[]>;
   getStationByCode(code: string): Promise<Station | undefined>;
   createStation(station: InsertStation): Promise<Station>;
-
+  
   // Train methods
   getTrains(): Promise<Train[]>;
-  getTrainById(id: number): Promise<Train | undefined>;
+  getTrainById(id: string): Promise<Train | undefined>;
   getTrainByNumber(number: string): Promise<Train | undefined>;
   createTrain(train: InsertTrain): Promise<Train>;
   searchTrains(params: SearchTrainParams): Promise<any[]>;
-
-  // Train Stop methods
-  getTrainStops(trainId: number): Promise<TrainStop[]>;
+  
+  // TrainStop methods
+  getTrainStops(trainId: string): Promise<TrainStop[]>;
   createTrainStop(trainStop: InsertTrainStop): Promise<TrainStop>;
-
-  // Train Class methods
-  getTrainClasses(trainId: number): Promise<TrainClass[]>;
+  
+  // TrainClass methods
+  getTrainClasses(trainId: string): Promise<TrainClass[]>;
   createTrainClass(trainClass: InsertTrainClass): Promise<TrainClass>;
-
+  
   // Booking methods
-  getBookings(userId: number): Promise<Booking[]>;
-  getBooking(id: number): Promise<Booking | undefined>;
+  getBookings(userId: string): Promise<Booking[]>;
+  getBooking(id: string): Promise<Booking | undefined>;
   getBookingByPnr(pnr: string): Promise<Booking | undefined>;
   createBooking(booking: InsertBooking): Promise<Booking>;
-  updateBooking(id: number, bookingData: Partial<InsertBooking>): Promise<Booking | undefined>;
-
-  // Chatbot methods
-  getChatbotResponse(message: string): Promise<string>;
-
+  updateBooking(id: string, bookingData: Partial<InsertBooking>): Promise<Booking | undefined>;
+  
   // Passenger methods
-  getPassengers(bookingId: number): Promise<Passenger[]>;
+  getPassengers(bookingId: string): Promise<Passenger[]>;
   createPassenger(passenger: InsertPassenger): Promise<Passenger>;
   
-  // Train Location methods
-  getTrainLocation(trainId: number): Promise<TrainLocation | undefined>;
+  // Chatbot methods
+  getChatbotResponse(message: string): Promise<string>;
+  
+  // TrainLocation methods
+  getTrainLocation(trainId: string): Promise<TrainLocation | undefined>;
   createTrainLocation(location: InsertTrainLocation): Promise<TrainLocation>;
-  updateTrainLocation(trainId: number, location: Partial<InsertTrainLocation>): Promise<TrainLocation | undefined>;
+  updateTrainLocation(trainId: string, location: Partial<InsertTrainLocation>): Promise<TrainLocation | undefined>;
   
-  // Payment Reminder methods
-  getPaymentReminders(bookingId: number): Promise<PaymentReminder | undefined>;
+  // PaymentReminder methods
+  getPaymentReminders(bookingId: string): Promise<PaymentReminder | undefined>;
   createPaymentReminder(reminder: InsertPaymentReminder): Promise<PaymentReminder>;
-  updatePaymentReminder(id: number, reminder: Partial<InsertPaymentReminder>): Promise<PaymentReminder | undefined>;
+  updatePaymentReminder(id: string, reminder: Partial<InsertPaymentReminder>): Promise<PaymentReminder | undefined>;
   
-  // Scheduled Booking methods
-  getScheduledBookings(userId: number): Promise<ScheduledBooking[]>;
-  getScheduledBookingById(id: number): Promise<ScheduledBooking | undefined>;
+  // ScheduledBooking methods
+  getScheduledBookings(userId: string): Promise<ScheduledBooking[]>;
+  getScheduledBookingById(id: string): Promise<ScheduledBooking | undefined>;
   getScheduledBookingsDue(): Promise<ScheduledBooking[]>;
   createScheduledBooking(booking: InsertScheduledBooking): Promise<ScheduledBooking>;
-  updateScheduledBooking(id: number, booking: Partial<InsertScheduledBooking>): Promise<ScheduledBooking | undefined>;
+  updateScheduledBooking(id: string, booking: Partial<InsertScheduledBooking>): Promise<ScheduledBooking | undefined>;
   
   // Ticket Transfer methods
-  getTicketTransfers(userId: number): Promise<any[]>;
-  createTicketTransfer(transferData: any): Promise<any>;
-  updateTicketTransfer(id: number, transferData: any): Promise<any>;
+  getTicketTransfers(userId: string): Promise<TicketTransfer[]>;
+  createTicketTransfer(transferData: InsertTicketTransfer): Promise<TicketTransfer>;
+  updateTicketTransfer(id: string, transferData: Partial<InsertTicketTransfer>): Promise<TicketTransfer | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  // In-memory data stores
-  private users: Map<number, User>;
-  private stations: Map<number, Station>;
-  private trains: Map<number, Train>;
-  private trainStops: Map<number, TrainStop>;
-  private trainClasses: Map<number, TrainClass>;
-  private bookings: Map<number, Booking>;
-  private passengers: Map<number, Passenger>;
-  private trainLocations: Map<number, TrainLocation>;
-  private paymentReminders: Map<number, PaymentReminder>;
-  private scheduledBookings: Map<number, ScheduledBooking>;
+export class DatabaseStorage implements IStorage {
+  sessionStore: any;
   
-  // Session store
-  sessionStore: session.Store;
-
-  // Current IDs for auto-increment
-  private userIdCounter: number;
-  private stationIdCounter: number;
-  private trainIdCounter: number;
-  private trainStopIdCounter: number;
-  private trainClassIdCounter: number;
-  private bookingIdCounter: number;
-  private passengerIdCounter: number;
-  private trainLocationIdCounter: number;
-  private paymentReminderIdCounter: number;
-  private scheduledBookingIdCounter: number;
-
   constructor() {
-    this.users = new Map();
-    this.stations = new Map();
-    this.trains = new Map();
-    this.trainStops = new Map();
-    this.trainClasses = new Map();
-    this.bookings = new Map();
-    this.passengers = new Map();
-    this.trainLocations = new Map();
-    this.paymentReminders = new Map();
-    this.scheduledBookings = new Map();
-
-    this.userIdCounter = 1;
-    this.stationIdCounter = 1;
-    this.trainIdCounter = 1;
-    this.trainStopIdCounter = 1;
-    this.trainClassIdCounter = 1;
-    this.bookingIdCounter = 1;
-    this.passengerIdCounter = 1;
-    this.trainLocationIdCounter = 1;
-    this.paymentReminderIdCounter = 1;
-    this.scheduledBookingIdCounter = 1;
-
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // Prune expired entries every 24h
+    if (!process.env.MONGODB_URI) {
+      throw new Error("MONGODB_URI environment variable is not set");
+    }
+    
+    // Set up session store
+    this.sessionStore = MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI,
+      collectionName: "sessions"
     });
-
-    // Initialize with some test data
-    this.initializeTestData();
+    
+    // Initialize the database with test data if needed
+    this.initializeDatabase();
   }
-
-  // User methods
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+  
+  private async initializeDatabase() {
+    try {
+      // Check if we need to initialize data by checking if stations table has data
+      const stationsCount = await StationModel.countDocuments();
+      if (stationsCount > 0) {
+        console.log("Database already initialized, skipping initialization");
+        return;
+      }
+      
+      console.log("Initializing database with test data...");
+      
+      // Add sample stations
+      await this.createStation({
+        code: "NDLS",
+        name: "New Delhi Railway Station",
+        city: "New Delhi"
+      });
+      
+      await this.createStation({
+        code: "CSTM",
+        name: "Chhatrapati Shivaji Terminus",
+        city: "Mumbai"
+      });
+      
+      await this.createStation({
+        code: "MAS",
+        name: "Chennai Central",
+        city: "Chennai"
+      });
+      
+      await this.createStation({
+        code: "HWH",
+        name: "Howrah Junction",
+        city: "Kolkata"
+      });
+      
+      // Get stations for reference
+      const allStations = await this.getStations();
+      const ndls = allStations.find(s => s.code === "NDLS");
+      const cstm = allStations.find(s => s.code === "CSTM");
+      const hwh = allStations.find(s => s.code === "HWH");
+      
+      if (!ndls || !cstm || !hwh) {
+        throw new Error("Failed to initialize stations");
+      }
+      
+      // Add a sample train
+      const rajdhaniExpress = await this.createTrain({
+        number: "12301",
+        name: "Rajdhani Express",
+        sourceStationId: ndls._id.toString(),
+        destinationStationId: hwh._id.toString(),
+        departureTime: "16:00",
+        arrivalTime: "10:00",
+        duration: "18h",
+        runDays: "1,2,3,4,5,6,7",
+        trainType: "Rajdhani",
+        hasWifi: true,
+        hasPantry: true,
+        hasChargingPoint: true,
+        hasBedroll: true,
+        avgSpeed: 95,
+        distance: 1450,
+        rake: "LHB",
+        pantryType: "Full Pantry",
+        tatkalAvailable: true,
+        tatkalOpeningTime: "10:00",
+        liveTrackingEnabled: true
+      });
+      
+      // Add train stops
+      await this.createTrainStop({
+        trainId: rajdhaniExpress._id.toString(),
+        stationId: ndls._id.toString(),
+        departureTime: "16:00",
+        arrivalTime: undefined,
+        dayCount: 0,
+        haltTime: "10 min",
+        distance: 0
+      });
+      
+      await this.createTrainStop({
+        trainId: rajdhaniExpress._id.toString(),
+        stationId: cstm._id.toString(),
+        departureTime: "22:30",
+        arrivalTime: "22:15",
+        dayCount: 0,
+        haltTime: "15 min",
+        distance: 400
+      });
+      
+      await this.createTrainStop({
+        trainId: rajdhaniExpress._id.toString(),
+        stationId: hwh._id.toString(),
+        departureTime: undefined,
+        arrivalTime: "10:00",
+        dayCount: 1,
+        haltTime: undefined,
+        distance: 1450
+      });
+      
+      // Add train classes
+      await this.createTrainClass({
+        trainId: rajdhaniExpress._id.toString(),
+        classCode: "1A",
+        className: "AC First Class",
+        fare: 2500,
+        totalSeats: 48,
+        availableSeats: 35
+      });
+      
+      await this.createTrainClass({
+        trainId: rajdhaniExpress._id.toString(),
+        classCode: "2A",
+        className: "AC 2-Tier",
+        fare: 1500,
+        totalSeats: 72,
+        availableSeats: 50
+      });
+      
+      await this.createTrainClass({
+        trainId: rajdhaniExpress._id.toString(),
+        classCode: "3A",
+        className: "AC 3-Tier",
+        fare: 1050,
+        totalSeats: 128,
+        availableSeats: 80
+      });
+      
+      // Add live train location for Rajdhani Express
+      await this.createTrainLocation({
+        trainId: rajdhaniExpress._id.toString(),
+        currentStationId: ndls._id.toString(),
+        nextStationId: cstm._id.toString(),
+        status: "departed",
+        delay: 0,
+        latitude: "28.6448",
+        longitude: "77.2126",
+        speed: 85
+      });
+      
+      console.log("Database initialization completed successfully");
+    } catch (error) {
+      console.error("Error initializing database:", error);
+    }
   }
-
+  
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await UserModel.findById(id);
+    return result || undefined;
+  }
+  
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    const result = await UserModel.findOne({ username });
+    return result || undefined;
   }
   
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
+    const result = await UserModel.findOne({ email });
+    return result || undefined;
   }
-
+  
   async createUser(user: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const newUser: User = { 
-      ...user, 
-      id, 
-      createdAt: new Date(),
-      lastLogin: null,
-      isActive: true,
-      role: user.role || 'user',
-      phoneNumber: user.phoneNumber || null
-    };
-    this.users.set(id, newUser);
-    return newUser;
+    const newUser = new UserModel(user);
+    return await newUser.save();
   }
   
-  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User> {
-    const existingUser = await this.getUser(id);
-    
-    if (!existingUser) {
-      throw new Error(`User with ID ${id} not found`);
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
+    const result = await UserModel.findByIdAndUpdate(id, userData, { new: true });
+    if (!result) {
+      throw new Error("User not found");
     }
-    
-    // Prevent updating sensitive fields
-    const { password, username, ...updatableFields } = userData;
-    
-    const updatedUser: User = {
-      ...existingUser,
-      ...updatableFields
-    };
-    
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    return result;
   }
   
-  async updateUserPassword(id: number, hashedPassword: string): Promise<boolean> {
-    const existingUser = await this.getUser(id);
-    
-    if (!existingUser) {
-      return false;
-    }
-    
-    const updatedUser: User = {
-      ...existingUser,
-      password: hashedPassword
-    };
-    
-    this.users.set(id, updatedUser);
-    return true;
+  async updateUserPassword(id: string, hashedPassword: string): Promise<boolean> {
+    const result = await UserModel.findByIdAndUpdate(id, { password: hashedPassword });
+    return !!result;
   }
   
-  async updateStripeCustomerId(id: number, customerId: string): Promise<User> {
-    const existingUser = await this.getUser(id);
-    
-    if (!existingUser) {
-      throw new Error(`User with ID ${id} not found`);
+  async updateStripeCustomerId(id: string, customerId: string): Promise<User> {
+    const result = await UserModel.findByIdAndUpdate(id, { stripeCustomerId: customerId }, { new: true });
+    if (!result) {
+      throw new Error("User not found");
     }
-    
-    const updatedUser: User = {
-      ...existingUser,
-      stripeCustomerId: customerId
-    };
-    
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    return result;
   }
   
-  async updateUserStripeInfo(id: number, stripeInfo: { customerId: string, subscriptionId: string }): Promise<User> {
-    const existingUser = await this.getUser(id);
-    
-    if (!existingUser) {
-      throw new Error(`User with ID ${id} not found`);
-    }
-    
-    const updatedUser: User = {
-      ...existingUser,
+  async updateUserStripeInfo(id: string, stripeInfo: { customerId: string, subscriptionId: string }): Promise<User> {
+    const result = await UserModel.findByIdAndUpdate(id, {
       stripeCustomerId: stripeInfo.customerId,
       stripeSubscriptionId: stripeInfo.subscriptionId
-    };
+    }, { new: true });
     
-    this.users.set(id, updatedUser);
-    return updatedUser;
-  }
-
-  // Station methods
-  async getStations(): Promise<Station[]> {
-    return Array.from(this.stations.values());
-  }
-
-  async getStationByCode(code: string): Promise<Station | undefined> {
-    return Array.from(this.stations.values()).find(station => station.code === code);
-  }
-
-  async createStation(station: InsertStation): Promise<Station> {
-    const id = this.stationIdCounter++;
-    const newStation: Station = { ...station, id };
-    this.stations.set(id, newStation);
-    return newStation;
-  }
-
-  // Train methods
-  async getTrains(): Promise<Train[]> {
-    return Array.from(this.trains.values());
-  }
-
-  async getTrainById(id: number): Promise<Train | undefined> {
-    return this.trains.get(id);
-  }
-
-  async getTrainByNumber(number: string): Promise<Train | undefined> {
-    return Array.from(this.trains.values()).find(train => train.number === number);
-  }
-
-  async createTrain(train: InsertTrain): Promise<Train> {
-    const id = this.trainIdCounter++;
-    const newTrain: Train = { ...train, id };
-    this.trains.set(id, newTrain);
-    return newTrain;
-  }
-
-  async searchTrains(params: SearchTrainParams): Promise<any[]> {
-    const { fromStation, toStation } = params;
-    
-    // Get station IDs from codes
-    const fromStationObj = await this.getStationByCode(fromStation);
-    const toStationObj = await this.getStationByCode(toStation);
-    
-    if (!fromStationObj || !toStationObj) {
-      return [];
+    if (!result) {
+      throw new Error("User not found");
     }
-
-    // Find trains that match the route
-    const matchingTrains = Array.from(this.trains.values()).filter(train => 
-      train.sourceStationId === fromStationObj.id && 
-      train.destinationStationId === toStationObj.id
-    );
-
-    // For each train, get its classes and return a combined result
-    const results = await Promise.all(
-      matchingTrains.map(async (train) => {
-        const classes = await this.getTrainClasses(train.id);
-        const stops = await this.getTrainStops(train.id);
-        
-        const sourceStation = this.stations.get(train.sourceStationId);
-        const destinationStation = this.stations.get(train.destinationStationId);
-        
-        return {
-          ...train,
-          sourceStation,
-          destinationStation,
-          classes,
-          stops
-        };
-      })
-    );
-
-    return results;
-  }
-
-  // Train Stop methods
-  async getTrainStops(trainId: number): Promise<TrainStop[]> {
-    return Array.from(this.trainStops.values()).filter(stop => stop.trainId === trainId);
-  }
-
-  async createTrainStop(trainStop: InsertTrainStop): Promise<TrainStop> {
-    const id = this.trainStopIdCounter++;
-    const newTrainStop: TrainStop = { ...trainStop, id };
-    this.trainStops.set(id, newTrainStop);
-    return newTrainStop;
-  }
-
-  // Train Class methods
-  async getTrainClasses(trainId: number): Promise<TrainClass[]> {
-    return Array.from(this.trainClasses.values()).filter(cls => cls.trainId === trainId);
-  }
-
-  async createTrainClass(trainClass: InsertTrainClass): Promise<TrainClass> {
-    const id = this.trainClassIdCounter++;
-    const newTrainClass: TrainClass = { ...trainClass, id };
-    this.trainClasses.set(id, newTrainClass);
-    return newTrainClass;
-  }
-
-  // Booking methods
-  async getBookings(userId: number): Promise<Booking[]> {
-    return Array.from(this.bookings.values()).filter(booking => booking.userId === userId);
-  }
-
-  async getBooking(id: number): Promise<Booking | undefined> {
-    return this.bookings.get(id);
-  }
-
-  async getBookingByPnr(pnr: string): Promise<Booking | undefined> {
-    return Array.from(this.bookings.values()).find(booking => booking.pnr === pnr);
-  }
-
-  async createBooking(booking: InsertBooking): Promise<Booking> {
-    const id = this.bookingIdCounter++;
-    const newBooking: Booking = { 
-      ...booking, 
-      id, 
-      createdAt: new Date(),
-      bookingType: booking.bookingType || null,
-      paymentStatus: booking.paymentStatus || null,
-      paymentId: booking.paymentId || null,
-      paymentDueDate: booking.paymentDueDate || null
-    };
-    this.bookings.set(id, newBooking);
-    return newBooking;
+    return result;
   }
   
-  async updateBooking(id: number, bookingData: Partial<InsertBooking>): Promise<Booking | undefined> {
-    const existingBooking = await this.getBooking(id);
+  async getStations(): Promise<Station[]> {
+    return await StationModel.find();
+  }
+  
+  async getStationByCode(code: string): Promise<Station | undefined> {
+    const result = await StationModel.findOne({ code });
+    return result || undefined;
+  }
+  
+  async createStation(station: InsertStation): Promise<Station> {
+    const newStation = new StationModel(station);
+    return await newStation.save();
+  }
+  
+  async getTrains(): Promise<Train[]> {
+    return await TrainModel.find();
+  }
+  
+  async getTrainById(id: string): Promise<Train | undefined> {
+    const result = await TrainModel.findById(id);
+    return result || undefined;
+  }
+  
+  async getTrainByNumber(number: string): Promise<Train | undefined> {
+    const result = await TrainModel.findOne({ number });
+    return result || undefined;
+  }
+  
+  async createTrain(train: InsertTrain): Promise<Train> {
+    const newTrain = new TrainModel(train);
+    return await newTrain.save();
+  }
+  
+  async searchTrains(params: SearchTrainParams): Promise<any[]> {
+    const { fromStation, toStation, journeyDate, travelClass } = params;
     
-    if (!existingBooking) {
-      return undefined;
+    // Get all trains
+    const allTrains = await this.getTrains();
+    
+    // For each train, check if it has stops that match the from and to stations
+    const results = [];
+    
+    for (const train of allTrains) {
+      const stops = await this.getTrainStops(train._id.toString());
+      
+      // Check if this train has stops at both the from and to stations
+      const fromStationStop = stops.find(stop => stop.stationId === fromStation);
+      const toStationStop = stops.find(stop => stop.stationId === toStation);
+      
+      // If the train has both stops, and the fromStation comes before the toStation
+      if (fromStationStop && toStationStop && 
+          ((fromStationStop.dayCount !== null && toStationStop.dayCount !== null && fromStationStop.dayCount < toStationStop.dayCount) || 
+           (fromStationStop.dayCount !== null && toStationStop.dayCount !== null && fromStationStop.dayCount === toStationStop.dayCount && 
+            fromStationStop.departureTime && toStationStop.arrivalTime && 
+            fromStationStop.departureTime < toStationStop.arrivalTime))) {
+        
+        // Get the classes for this train
+        const classes = await this.getTrainClasses(train._id.toString());
+        
+        // Filter classes if travelClass is specified
+        const filteredClasses = travelClass 
+          ? classes.filter(c => c.classCode === travelClass)
+          : classes;
+        
+        if (filteredClasses.length > 0) {
+          // Get the station details
+          const fromStationDetails = await this.getStation(fromStation);
+          const toStationDetails = await this.getStation(toStation);
+          
+          results.push({
+            ...train.toObject(),
+            classes: filteredClasses,
+            fromStation: fromStationDetails,
+            toStation: toStationDetails,
+            departureTime: fromStationStop.departureTime,
+            arrivalTime: toStationStop.arrivalTime,
+            fromStationStop,
+            toStationStop
+          });
+        }
+      }
     }
     
-    const updatedBooking: Booking = {
-      ...existingBooking,
-      ...bookingData
-    };
-    
-    this.bookings.set(id, updatedBooking);
-    return updatedBooking;
+    return results;
   }
-
-  // Passenger methods
-  async getPassengers(bookingId: number): Promise<Passenger[]> {
-    return Array.from(this.passengers.values()).filter(passenger => passenger.bookingId === bookingId);
+  
+  private async getStation(stationId: string): Promise<Station | undefined> {
+    const result = await StationModel.findById(stationId);
+    return result || undefined;
   }
-
+  
+  async getTrainStops(trainId: string): Promise<TrainStop[]> {
+    return await TrainStopModel.find({ trainId });
+  }
+  
+  async createTrainStop(trainStop: InsertTrainStop): Promise<TrainStop> {
+    const newTrainStop = new TrainStopModel(trainStop);
+    return await newTrainStop.save();
+  }
+  
+  async getTrainClasses(trainId: string): Promise<TrainClass[]> {
+    return await TrainClassModel.find({ trainId });
+  }
+  
+  async createTrainClass(trainClass: InsertTrainClass): Promise<TrainClass> {
+    const newTrainClass = new TrainClassModel(trainClass);
+    return await newTrainClass.save();
+  }
+  
+  async getBookings(userId: string): Promise<Booking[]> {
+    return await BookingModel.find({ userId });
+  }
+  
+  async getBooking(id: string): Promise<Booking | undefined> {
+    const result = await BookingModel.findById(id);
+    return result || undefined;
+  }
+  
+  async getBookingByPnr(pnr: string): Promise<Booking | undefined> {
+    const result = await BookingModel.findOne({ pnr });
+    return result || undefined;
+  }
+  
+  async createBooking(booking: InsertBooking): Promise<Booking> {
+    const newBooking = new BookingModel(booking);
+    return await newBooking.save();
+  }
+  
+  async updateBooking(id: string, bookingData: Partial<InsertBooking>): Promise<Booking | undefined> {
+    const result = await BookingModel.findByIdAndUpdate(id, bookingData, { new: true });
+    return result || undefined;
+  }
+  
+  async getPassengers(bookingId: string): Promise<Passenger[]> {
+    return await PassengerModel.find({ bookingId });
+  }
+  
   async createPassenger(passenger: InsertPassenger): Promise<Passenger> {
-    const id = this.passengerIdCounter++;
-    const newPassenger: Passenger = { ...passenger, id };
-    this.passengers.set(id, newPassenger);
-    return newPassenger;
+    const newPassenger = new PassengerModel(passenger);
+    return await newPassenger.save();
   }
-
+  
   async getChatbotResponse(message: string): Promise<string> {
-    // Import the getChatbotResponse function from chatbot.ts
-    const { getChatbotResponse } = await import('./chatbot');
     return getChatbotResponse(message);
   }
   
-  // Train Location methods
-  async getTrainLocation(trainId: number): Promise<TrainLocation | undefined> {
-    return Array.from(this.trainLocations.values()).find(loc => loc.trainId === trainId);
+  async getTrainLocation(trainId: string): Promise<TrainLocation | undefined> {
+    const result = await TrainLocationModel.findOne({ trainId });
+    return result || undefined;
   }
   
   async createTrainLocation(location: InsertTrainLocation): Promise<TrainLocation> {
-    const id = this.trainLocationIdCounter++;
-    const newLocation: TrainLocation = { 
-      ...location, 
-      id, 
-      updatedAt: new Date() 
-    };
-    this.trainLocations.set(id, newLocation);
-    return newLocation;
+    const newLocation = new TrainLocationModel(location);
+    return await newLocation.save();
   }
   
-  async updateTrainLocation(trainId: number, location: Partial<InsertTrainLocation>): Promise<TrainLocation | undefined> {
-    const existingLocation = await this.getTrainLocation(trainId);
-    
-    if (!existingLocation) {
-      return undefined;
-    }
-    
-    const updatedLocation: TrainLocation = { 
-      ...existingLocation, 
-      ...location,
-      updatedAt: new Date() 
-    };
-    
-    this.trainLocations.set(existingLocation.id, updatedLocation);
-    return updatedLocation;
+  async updateTrainLocation(trainId: string, location: Partial<InsertTrainLocation>): Promise<TrainLocation | undefined> {
+    const result = await TrainLocationModel.findOneAndUpdate({ trainId }, location, { new: true });
+    return result || undefined;
   }
   
-  // Payment Reminder methods
-  async getPaymentReminders(bookingId: number): Promise<PaymentReminder | undefined> {
-    return Array.from(this.paymentReminders.values()).find(reminder => reminder.bookingId === bookingId);
+  async getPaymentReminders(bookingId: string): Promise<PaymentReminder | undefined> {
+    const result = await PaymentReminderModel.findOne({ bookingId });
+    return result || undefined;
   }
   
   async createPaymentReminder(reminder: InsertPaymentReminder): Promise<PaymentReminder> {
-    const id = this.paymentReminderIdCounter++;
-    const newReminder: PaymentReminder = { ...reminder, id };
-    this.paymentReminders.set(id, newReminder);
-    return newReminder;
+    const newReminder = new PaymentReminderModel(reminder);
+    return await newReminder.save();
   }
   
-  async updatePaymentReminder(id: number, reminder: Partial<InsertPaymentReminder>): Promise<PaymentReminder | undefined> {
-    const existingReminder = this.paymentReminders.get(id);
-    
-    if (!existingReminder) {
-      return undefined;
-    }
-    
-    const updatedReminder: PaymentReminder = { 
-      ...existingReminder, 
-      ...reminder 
-    };
-    
-    this.paymentReminders.set(id, updatedReminder);
-    return updatedReminder;
+  async updatePaymentReminder(id: string, reminder: Partial<InsertPaymentReminder>): Promise<PaymentReminder | undefined> {
+    const result = await PaymentReminderModel.findByIdAndUpdate(id, reminder, { new: true });
+    return result || undefined;
   }
-
-  // Initialize with some test data
-  private async initializeTestData() {
-    // Add stations
-    const ndls = await this.createStation({ code: 'NDLS', name: 'New Delhi Railway Station', city: 'New Delhi' });
-    const mmct = await this.createStation({ code: 'MMCT', name: 'Mumbai Central', city: 'Mumbai' });
-    const mtj = await this.createStation({ code: 'MTJ', name: 'Mathura Junction', city: 'Mathura' });
-    const kota = await this.createStation({ code: 'KOTA', name: 'Kota Junction', city: 'Kota' });
-    const brc = await this.createStation({ code: 'BRC', name: 'Vadodara Junction', city: 'Vadodara' });
-    const bdts = await this.createStation({ code: 'BDTS', name: 'Bandra Terminus', city: 'Mumbai' });
-    const jat = await this.createStation({ code: 'JAT', name: 'Jammu Tawi', city: 'Jammu' });
-    const hwh = await this.createStation({ code: 'HWH', name: 'Howrah Junction', city: 'Kolkata' });
-    const mas = await this.createStation({ code: 'MAS', name: 'Chennai Central', city: 'Chennai' });
-    const pnbe = await this.createStation({ code: 'PNBE', name: 'Patna Junction', city: 'Patna' });
-    
-    // Add trains
-    // Rajdhani Express
-    const rajdhani = await this.createTrain({
-      number: '12951',
-      name: 'Rajdhani Express',
-      sourceStationId: ndls.id,
-      destinationStationId: mmct.id,
-      departureTime: '16:25',
-      arrivalTime: '09:45',
-      duration: '17h 20m',
-      runDays: 'M T W T F S S',
-      trainType: 'Rajdhani',
-      hasWifi: true,
-      hasPantry: true,
-      hasChargingPoint: true,
-      hasBedroll: true
-    });
-
-    // Add train stops for Rajdhani
-    await this.createTrainStop({ trainId: rajdhani.id, stationId: ndls.id, departureTime: '16:25', dayCount: 0, distance: 0 });
-    await this.createTrainStop({ trainId: rajdhani.id, stationId: mtj.id, arrivalTime: '18:10', departureTime: '18:15', dayCount: 0, haltTime: '5m', distance: 150 });
-    await this.createTrainStop({ trainId: rajdhani.id, stationId: kota.id, arrivalTime: '22:30', departureTime: '22:35', dayCount: 0, haltTime: '5m', distance: 450 });
-    await this.createTrainStop({ trainId: rajdhani.id, stationId: brc.id, arrivalTime: '05:15', departureTime: '05:20', dayCount: 1, haltTime: '5m', distance: 650 });
-    await this.createTrainStop({ trainId: rajdhani.id, stationId: mmct.id, arrivalTime: '09:45', dayCount: 1, distance: 1384 });
-
-    // Add train classes for Rajdhani
-    await this.createTrainClass({ 
-      trainId: rajdhani.id, 
-      classCode: '3A', 
-      className: 'AC 3 Tier', 
-      fare: 2475, 
-      totalSeats: 72, 
-      availableSeats: 42 
-    });
-    await this.createTrainClass({ 
-      trainId: rajdhani.id, 
-      classCode: '2A', 
-      className: 'AC 2 Tier', 
-      fare: 3350, 
-      totalSeats: 48, 
-      availableSeats: 12 
-    });
-    await this.createTrainClass({ 
-      trainId: rajdhani.id, 
-      classCode: '1A', 
-      className: 'AC First Class', 
-      fare: 5600, 
-      totalSeats: 24, 
-      availableSeats: 4 
-    });
-    await this.createTrainClass({ 
-      trainId: rajdhani.id, 
-      classCode: 'SL', 
-      className: 'Sleeper', 
-      fare: 915, 
-      totalSeats: 72, 
-      availableSeats: -24 
-    });
-
-    // August Kranti Rajdhani Express
-    const augustKranti = await this.createTrain({
-      number: '12953',
-      name: 'August Kranti Rajdhani',
-      sourceStationId: ndls.id,
-      destinationStationId: mmct.id,
-      departureTime: '17:40',
-      arrivalTime: '09:30',
-      duration: '15h 50m',
-      runDays: 'M W F',
-      trainType: 'Rajdhani',
-      hasWifi: true,
-      hasPantry: true,
-      hasChargingPoint: true,
-      hasBedroll: true
-    });
-
-    // Add train classes for August Kranti
-    await this.createTrainClass({ 
-      trainId: augustKranti.id, 
-      classCode: '3A', 
-      className: 'AC 3 Tier', 
-      fare: 2560, 
-      totalSeats: 72, 
-      availableSeats: 8 
-    });
-    await this.createTrainClass({ 
-      trainId: augustKranti.id, 
-      classCode: '2A', 
-      className: 'AC 2 Tier', 
-      fare: 3480, 
-      totalSeats: 48, 
-      availableSeats: 6 
-    });
-    await this.createTrainClass({ 
-      trainId: augustKranti.id, 
-      classCode: '1A', 
-      className: 'AC First Class', 
-      fare: 5880, 
-      totalSeats: 24, 
-      availableSeats: 2 
-    });
-
-    // Add more trains for different routes
-    const duronto = await this.createTrain({
-      number: '12223',
-      name: 'Mumbai LTT - Ernakulam AC Duronto Express',
-      sourceStationId: mmct.id,
-      destinationStationId: mas.id,
-      departureTime: '23:05',
-      arrivalTime: '15:25',
-      duration: '16h 20m',
-      runDays: 'F',
-      trainType: 'Duronto',
-      hasWifi: false,
-      hasPantry: true,
-      hasChargingPoint: true,
-      hasBedroll: true
-    });
-
-    const shatabdi = await this.createTrain({
-      number: '12001',
-      name: 'Shatabdi Express',
-      sourceStationId: ndls.id,
-      destinationStationId: hwh.id,
-      departureTime: '06:00',
-      arrivalTime: '13:45',
-      duration: '7h 45m',
-      runDays: 'M T W T F S S',
-      trainType: 'Shatabdi',
-      hasWifi: true,
-      hasPantry: true,
-      hasChargingPoint: true,
-      hasBedroll: false,
-      liveTrackingEnabled: true
-    });
-    
-    // Add sample train location for tracking
-    await this.createTrainLocation({
-      trainId: rajdhani.id,
-      currentStationId: kota.id,
-      nextStationId: brc.id,
-      latitude: "25.2138", 
-      longitude: "75.8648",
-      speed: 84,
-      delay: 15,
-      status: 'Running'
-    });
-    
-    // Create a sample user for bookings
-    const user = await this.createUser({
-      username: 'testuser',
-      password: 'password123',
-      email: 'test@example.com',
-      fullName: 'Test User',
-      phone: '9876543210'
-    });
-    
-    // Create a sample booking
-    const booking = await this.createBooking({
-      userId: user.id,
-      trainId: rajdhani.id,
-      classCode: '3A',
-      journeyDate: '2025-04-15',
-      pnr: 'PNR1234567',
-      totalFare: 2475,
-      status: 'Confirmed',
-      bookingType: 'Tatkal',
-      paymentStatus: 'Pending',
-      paymentId: 'PAY123456',
-      paymentDueDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
-    });
-    
-    // Add passenger to the booking
-    await this.createPassenger({
-      bookingId: booking.id,
-      name: 'John Doe',
-      age: 35,
-      gender: 'Male',
-      status: 'Confirmed',
-      berthPreference: 'Lower',
-      seatNumber: 'B1-32'
-    });
-    
-    // Create payment reminder for the booking
-    await this.createPaymentReminder({
-      bookingId: booking.id,
-      reminderCount: 1,
-      lastSentAt: new Date(),
-      reminderType: 'SMS',
-      reminderStatus: 'Sent',
-      nextReminderAt: new Date(Date.now() + 8 * 60 * 60 * 1000) // 8 hours from now
-    });
+  
+  async getScheduledBookings(userId: string): Promise<ScheduledBooking[]> {
+    return await ScheduledBookingModel.find({ userId });
   }
-
-  // Scheduled Booking methods
-  async getScheduledBookings(userId: number): Promise<ScheduledBooking[]> {
-    return Array.from(this.scheduledBookings.values()).filter(booking => booking.userId === userId);
+  
+  async getScheduledBookingById(id: string): Promise<ScheduledBooking | undefined> {
+    const result = await ScheduledBookingModel.findById(id);
+    return result || undefined;
   }
-
-  async getScheduledBookingById(id: number): Promise<ScheduledBooking | undefined> {
-    return this.scheduledBookings.get(id);
-  }
-
+  
   async getScheduledBookingsDue(): Promise<ScheduledBooking[]> {
     const now = new Date();
-    return Array.from(this.scheduledBookings.values()).filter(booking => {
-      return booking.status === 'pending' && booking.scheduledAt <= now;
+    return await ScheduledBookingModel.find({
+      status: "pending",
+      scheduledAt: { $lte: now }
     });
   }
-
+  
   async createScheduledBooking(booking: InsertScheduledBooking): Promise<ScheduledBooking> {
-    const id = this.scheduledBookingIdCounter++;
-    const newBooking: ScheduledBooking = {
-      ...booking,
-      id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      status: 'pending'
-    };
-    this.scheduledBookings.set(id, newBooking);
-    return newBooking;
-  }
-
-  async updateScheduledBooking(id: number, booking: Partial<InsertScheduledBooking>): Promise<ScheduledBooking | undefined> {
-    const existingBooking = this.scheduledBookings.get(id);
-    
-    if (!existingBooking) {
-      return undefined;
-    }
-    
-    const updatedBooking: ScheduledBooking = {
-      ...existingBooking,
-      ...booking,
-      updatedAt: new Date()
-    };
-    
-    this.scheduledBookings.set(id, updatedBooking);
-    return updatedBooking;
+    const newScheduledBooking = new ScheduledBookingModel(booking);
+    return await newScheduledBooking.save();
   }
   
-  // Ticket Transfer methods
-  private ticketTransfers: Map<number, any> = new Map();
-  private ticketTransferIdCounter: number = 1;
-  
-  async getTicketTransfers(userId: number): Promise<any[]> {
-    return Array.from(this.ticketTransfers.values()).filter(transfer => 
-      transfer.senderId === userId || transfer.recipientId === userId
-    );
+  async updateScheduledBooking(id: string, booking: Partial<InsertScheduledBooking>): Promise<ScheduledBooking | undefined> {
+    const result = await ScheduledBookingModel.findByIdAndUpdate(id, booking, { new: true });
+    return result || undefined;
   }
   
-  async createTicketTransfer(transferData: any): Promise<any> {
-    const id = this.ticketTransferIdCounter++;
-    const newTransfer = {
-      ...transferData,
-      id,
-      status: transferData.status || 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    this.ticketTransfers.set(id, newTransfer);
-    return newTransfer;
+  async getTicketTransfers(userId: string): Promise<TicketTransfer[]> {
+    return await TicketTransferModel.find({ senderId: userId });
   }
   
-  async updateTicketTransfer(id: number, transferData: any): Promise<any> {
-    const existingTransfer = this.ticketTransfers.get(id);
-    
-    if (!existingTransfer) {
-      return undefined;
-    }
-    
-    const updatedTransfer = {
-      ...existingTransfer,
-      ...transferData,
-      updatedAt: new Date()
-    };
-    
-    this.ticketTransfers.set(id, updatedTransfer);
-    return updatedTransfer;
+  async createTicketTransfer(transferData: InsertTicketTransfer): Promise<TicketTransfer> {
+    const newTransfer = new TicketTransferModel(transferData);
+    return await newTransfer.save();
+  }
+  
+  async updateTicketTransfer(id: string, transferData: Partial<InsertTicketTransfer>): Promise<TicketTransfer | undefined> {
+    const result = await TicketTransferModel.findByIdAndUpdate(id, transferData, { new: true });
+    return result || undefined;
   }
 }
 
-// Initialize storage with MemStorage
-const storage: IStorage = new MemStorage();
-
 // Export the storage instance
-export { storage };
+export const storage = new DatabaseStorage();
