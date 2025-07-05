@@ -4,7 +4,17 @@ import path from "path";
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+// Debug: Log all environment variables
+console.log('=== ENVIRONMENT VARIABLES DEBUG ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
+console.log('MONGODB_URI length:', process.env.MONGODB_URI?.length || 0);
+console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
+console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('MONGODB') || key.includes('SESSION') || key.includes('NODE')));
+console.log('===================================');
+
 import express, { type Request, Response, NextFunction } from "express";
+
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./db"; // Import the database initialization function

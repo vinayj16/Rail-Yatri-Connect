@@ -20,19 +20,19 @@ async function generateUniquePnr(): Promise<string> {
 // Process a scheduled booking
 export async function processScheduledBooking(scheduledBookingId: string): Promise<Booking | null> {
   try {
-    // Get the scheduled booking
-    const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
-    if (!scheduledBooking) {
-      console.error(`Scheduled booking ${scheduledBookingId} not found`);
-      return null;
-    }
-
+  // Get the scheduled booking
+  const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
+  if (!scheduledBooking) {
+    console.error(`Scheduled booking ${scheduledBookingId} not found`);
+    return null;
+  }
+  
     // Check if it's already been processed
-    if (scheduledBooking.status !== 'pending') {
+  if (scheduledBooking.status !== 'pending') {
       console.log(`Scheduled booking ${scheduledBookingId} is already ${scheduledBooking.status}`);
-      return null;
-    }
-
+    return null;
+  }
+  
     // Get train classes to calculate fare
     const trainClasses = await storage.getTrainClasses(scheduledBooking.trainId.toString());
     const selectedClass = trainClasses.find(c => c.classCode === scheduledBooking.classCode);
@@ -41,13 +41,13 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
       console.error(`Train class ${scheduledBooking.classCode} not found for train ${scheduledBooking.trainId}`);
       return null;
     }
-
+    
     // Calculate total fare
     const totalFare = selectedClass.fare * scheduledBooking.passengerData.length;
 
     // Generate unique PNR
     const pnr = await generateUniquePnr();
-
+    
     // Create the actual booking
     const booking = await storage.createBooking({
       status: 'CONFIRMED',
@@ -61,7 +61,7 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
       paymentStatus: 'Pending',
       paymentDueDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
     });
-
+    
     // Add the passengers to the booking
     for (const passengerInfo of scheduledBooking.passengerData) {
       await storage.createPassenger({
@@ -73,7 +73,7 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
         status: 'Waiting List'  // Start as waiting list until payment
       });
     }
-
+    
     // Update the scheduled booking status
     await storage.updateScheduledBooking(scheduledBookingId, {
       status: 'completed',
@@ -92,7 +92,7 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
         nextReminderAt: firstReminderAt
       });
     }
-
+    
     console.log(`Successfully processed scheduled booking ${scheduledBookingId} into booking ${booking._id}`);
     return booking;
 
@@ -105,19 +105,19 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
 // Process all due scheduled bookings
 export async function processScheduledBookings(): Promise<{ successCount: number; errorCount: number }> {
   try {
-    const dueBookings = await storage.getScheduledBookingsDue();
-    console.log(`Found ${dueBookings.length} scheduled bookings due for processing`);
-
-    let successCount = 0;
+  const dueBookings = await storage.getScheduledBookingsDue();
+  console.log(`Found ${dueBookings.length} scheduled bookings due for processing`);
+  
+  let successCount = 0;
     let errorCount = 0;
-
-    for (const booking of dueBookings) {
+  
+  for (const booking of dueBookings) {
       const result = await processScheduledBooking(booking._id.toString());
-      if (result) {
-        successCount++;
+    if (result) {
+      successCount++;
       } else {
         errorCount++;
-      }
+}
     }
 
     console.log(`Processed ${successCount} bookings successfully, ${errorCount} failed`);

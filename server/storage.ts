@@ -28,7 +28,7 @@ function convertMongooseDoc<T>(doc: any): T | undefined {
   
   // Convert the document to a plain object and handle null values
   const obj = doc.toObject();
-  
+
   // Convert null values to undefined for optional fields
   Object.keys(obj).forEach(key => {
     if (obj[key] === null) {
@@ -82,7 +82,7 @@ export interface IStorage {
   // Passenger methods
   getPassengers(bookingId: string): Promise<Passenger[]>;
   createPassenger(passenger: InsertPassenger): Promise<Passenger>;
-  
+
   // Chatbot methods
   getChatbotResponse(message: string): Promise<string>;
 
@@ -285,7 +285,7 @@ export class DatabaseStorage implements IStorage {
       console.log("Database initialization completed successfully");
     } catch (error) {
       console.error("Error initializing database:", error);
-    }
+  }
   }
   
   async getUser(id: string): Promise<User | undefined> {
@@ -341,7 +341,7 @@ export class DatabaseStorage implements IStorage {
     }
     return convertMongooseDoc<User>(result)!;
   }
-  
+
   async getStations(): Promise<Station[]> {
     const stations = await StationModel.find();
     return stations.map(station => convertMongooseDoc<Station>(station)!);
@@ -357,7 +357,7 @@ export class DatabaseStorage implements IStorage {
     const savedStation = await newStation.save();
     return convertMongooseDoc<Station>(savedStation)!;
   }
-  
+
   async getTrains(): Promise<Train[]> {
     const trains = await TrainModel.find();
     return trains.map(train => convertMongooseDoc<Train>(train)!);
@@ -414,7 +414,7 @@ export class DatabaseStorage implements IStorage {
           // Get the station details
           const fromStationDetails = await this.getStation(fromStation);
           const toStationDetails = await this.getStation(toStation);
-          
+        
           results.push({
           ...train,
             classes: filteredClasses,
@@ -447,7 +447,7 @@ export class DatabaseStorage implements IStorage {
     const savedStop = await newTrainStop.save();
     return convertMongooseDoc<TrainStop>(savedStop)!;
   }
-  
+
   async getTrainClasses(trainId: string): Promise<TrainClass[]> {
     const classes = await TrainClassModel.find({ trainId });
     return classes.map(cls => convertMongooseDoc<TrainClass>(cls)!);
@@ -458,12 +458,12 @@ export class DatabaseStorage implements IStorage {
     const savedClass = await newTrainClass.save();
     return convertMongooseDoc<TrainClass>(savedClass)!;
   }
-  
+
   async getBookings(userId: string): Promise<Booking[]> {
     const bookings = await BookingModel.find({ userId });
     return bookings.map(booking => convertMongooseDoc<Booking>(booking)!);
   }
-  
+
   async getBooking(id: string): Promise<Booking | undefined> {
     const result = await BookingModel.findById(id);
     return convertMongooseDoc<Booking>(result);
@@ -484,7 +484,7 @@ export class DatabaseStorage implements IStorage {
     const result = await BookingModel.findByIdAndUpdate(id, bookingData, { new: true });
     return convertMongooseDoc<Booking>(result);
   }
-  
+
   async getPassengers(bookingId: string): Promise<Passenger[]> {
     const passengers = await PassengerModel.find({ bookingId });
     return passengers.map(passenger => convertMongooseDoc<Passenger>(passenger)!);
@@ -556,7 +556,7 @@ export class DatabaseStorage implements IStorage {
     const savedBooking = await newScheduledBooking.save();
     return convertMongooseDoc<ScheduledBooking>(savedBooking)!;
   }
-  
+
   async updateScheduledBooking(id: string, booking: Partial<InsertScheduledBooking>): Promise<ScheduledBooking | undefined> {
     const result = await ScheduledBookingModel.findByIdAndUpdate(id, booking, { new: true });
     return convertMongooseDoc<ScheduledBooking>(result);

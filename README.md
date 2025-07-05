@@ -70,15 +70,15 @@ npm install
    ```
 
    **Option 2: Manual start**
-   ```bash
+```bash
    $env:MONGODB_URI="mongodb://localhost:27017/irctc_booking"; $env:SESSION_SECRET="dev-secret-key-123"; npm run dev
-   ```
+```
 
    The server will start on **http://localhost:3001**
 
 6. **Build for production**
 ```bash
-   npm run build
+npm run build
    npm start
    ```
 
