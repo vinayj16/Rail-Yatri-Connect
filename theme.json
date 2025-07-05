@@ -2,5 +2,7 @@
   "variant": "professional",
   "primary": "hsl(210, 100%, 35%)",
   "appearance": "light",
-  "radius": 0.5
+  "radius": 0.5,
+  "background": "0 0% 100%",
+  "foreground": "222.2 84% 4.9%"
 }
