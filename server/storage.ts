@@ -115,9 +115,19 @@ export class DatabaseStorage implements IStorage {
   constructor() {
     if (!process.env.MONGODB_URI) {
       console.error("❌ MONGODB_URI environment variable is not set!");
-      console.error("Please create a .env file with your MongoDB connection string:");
-      console.error("MONGODB_URI=mongodb://localhost:27017/irctc_booking");
-      console.error("Or for MongoDB Atlas: MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/irctc_booking");
+      console.error("");
+      console.error("For LOCAL development:");
+      console.error("1. Create a .env file in the root directory");
+      console.error("2. Add: MONGODB_URI=mongodb://localhost:27017/irctc_booking");
+      console.error("");
+      console.error("For PRODUCTION deployment (Render):");
+      console.error("1. Go to your Render dashboard");
+      console.error("2. Navigate to Environment Variables");
+      console.error("3. Add: MONGODB_URI=your-mongodb-connection-string");
+      console.error("4. Add: SESSION_SECRET=your-random-secret");
+      console.error("");
+      console.error("MongoDB Atlas (free): https://www.mongodb.com/atlas");
+      console.error("Render Environment Variables: https://render.com/docs/environment-variables");
       throw new Error("MONGODB_URI environment variable is not set");
     }
     

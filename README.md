@@ -127,17 +127,51 @@ The application uses MongoDB with the following collections:
 
 ## Deployment on Render
 
+### Step-by-Step Deployment Guide
+
+1. **Fork/Clone the Repository**
+   - Fork this repository to your GitHub account
+   - Or clone it to your local machine
+
+2. **Create a MongoDB Database**
+   - Go to [MongoDB Atlas](https://www.mongodb.com/atlas)
+   - Create a free account and cluster
+   - Get your connection string (it looks like: `mongodb+srv://username:password@cluster.mongodb.net/database`)
+
+3. **Deploy on Render**
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New" → "Web Service"
+   - Connect your GitHub repository
+   - Configure the service:
+     - **Name**: `irctc-booking-platform` (or any name you prefer)
+     - **Environment**: `Node`
+     - **Build Command**: `npm install && npm run build`
+     - **Start Command**: `npm start`
+     - **Root Directory**: (leave empty)
+
+4. **Set Environment Variables**
+   In your Render service dashboard, go to "Environment" tab and add:
+   ```
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/irctc_booking
+   NODE_ENV=production
+   SESSION_SECRET=your-random-secret-key-here
+   PERPLEXITY_API_KEY=your-perplexity-api-key-here
+   ```
+
+5. **Deploy**
+   - Click "Create Web Service"
+   - Render will automatically build and deploy your application
+   - Your app will be available at: `https://your-app-name.onrender.com`
+
 ### Environment Variables for Render
 
 Set these environment variables in your Render dashboard:
 
 ```
-MONGODB_URI=your-mongodb-connection-string
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/irctc_booking
 NODE_ENV=production
 SESSION_SECRET=your-random-session-secret
 PERPLEXITY_API_KEY=your-perplexity-api-key
-STRIPE_SECRET_KEY=your-stripe-secret-key
-STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 ```
 
 ### Build Configuration
