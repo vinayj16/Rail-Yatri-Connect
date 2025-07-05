@@ -19,75 +19,51 @@ async function generateUniquePnr(): Promise<string> {
 
 // Process a scheduled booking
 export async function processScheduledBooking(scheduledBookingId: string): Promise<Booking | null> {
-  // Get the scheduled booking
-  const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
-  
-  if (!scheduledBooking) {
-    console.error(`Scheduled booking ${scheduledBookingId} not found`);
-    return null;
-  }
-  
-  // Check if it's already processed or failed
-  if (scheduledBooking.status !== 'pending') {
-    console.log(`Scheduled booking ${scheduledBookingId} already processed, status: ${scheduledBooking.status}`);
-    return null;
-  }
-  
   try {
-    // Get train class for fare information
-    const trainClasses = await storage.getTrainClasses(scheduledBooking.trainId);
-    const trainClass = trainClasses.find(cls => cls.classCode === scheduledBooking.classCode);
-    
-    if (!trainClass) {
-      throw new Error(`Train class ${scheduledBooking.classCode} not found for train ${scheduledBooking.trainId}`);
-    }
-    
-    // Check if seats are available
-    if (trainClass.availableSeats <= 0) {
-      await storage.updateScheduledBooking(scheduledBookingId, { status: 'failed' });
-      console.error(`No seats available for train ${scheduledBooking.trainId}, class ${scheduledBooking.classCode}`);
+    // Get the scheduled booking
+    const scheduledBooking = await storage.getScheduledBookingById(scheduledBookingId);
+    if (!scheduledBooking) {
+      console.error(`Scheduled booking ${scheduledBookingId} not found`);
       return null;
     }
-    
-    // Generate a unique PNR
-    const pnr = await generateUniquePnr();
-    
-    // Create the booking
-    const passengerData = scheduledBooking.passengerData as Passenger[];
-    const totalFare = trainClass.fare * passengerData.length;
-    
-    // Set payment due date based on booking type
-    // For tatkal, payment is due sooner than for regular bookings
-    const paymentDueDate = new Date();
-    if (scheduledBooking.bookingType === 'tatkal') {
-      // Due in 2 hours for tatkal
-      paymentDueDate.setHours(paymentDueDate.getHours() + 2);
-    } else {
-      // Due in 24 hours for general
-      paymentDueDate.setHours(paymentDueDate.getHours() + 24);
+
+    // Check if it's already been processed
+    if (scheduledBooking.status !== 'pending') {
+      console.log(`Scheduled booking ${scheduledBookingId} is already ${scheduledBooking.status}`);
+      return null;
     }
+
+    // Get train classes to calculate fare
+    const trainClasses = await storage.getTrainClasses(scheduledBooking.trainId.toString());
+    const selectedClass = trainClasses.find(c => c.classCode === scheduledBooking.classCode);
     
-    // Create the booking
+    if (!selectedClass) {
+      console.error(`Train class ${scheduledBooking.classCode} not found for train ${scheduledBooking.trainId}`);
+      return null;
+    }
+
+    // Calculate total fare
+    const totalFare = selectedClass.fare * scheduledBooking.passengerData.length;
+
+    // Generate unique PNR
+    const pnr = await generateUniquePnr();
+
+    // Create the actual booking
     const booking = await storage.createBooking({
-      userId: scheduledBooking.userId,
-      trainId: scheduledBooking.trainId,
-      journeyDate: scheduledBooking.journeyDate,
+      status: 'CONFIRMED',
+      trainId: scheduledBooking.trainId.toString(),
       classCode: scheduledBooking.classCode,
+      userId: scheduledBooking.userId.toString(),
+      journeyDate: scheduledBooking.journeyDate,
       pnr,
-      status: 'Waiting List', // Start as waiting list until payment
       totalFare,
       bookingType: scheduledBooking.bookingType,
-      paymentStatus: 'pending',
-      paymentDueDate
+      paymentStatus: 'Pending',
+      paymentDueDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
     });
-    
-    // Update scheduled booking with status to 'completed'
-    await storage.updateScheduledBooking(scheduledBookingId, {
-      status: 'completed'
-    });
-    
+
     // Add the passengers to the booking
-    for (const passengerInfo of passengerData) {
+    for (const passengerInfo of scheduledBooking.passengerData) {
       await storage.createPassenger({
         bookingId: booking._id.toString(),
         name: passengerInfo.name,
@@ -97,12 +73,16 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
         status: 'Waiting List'  // Start as waiting list until payment
       });
     }
-    
-    // If payment reminders are enabled, create a payment reminder
+
+    // Update the scheduled booking status
+    await storage.updateScheduledBooking(scheduledBookingId, {
+      status: 'completed',
+      bookingId: booking._id.toString()
+    });
+
+    // Create payment reminder if enabled
     if (scheduledBooking.paymentRemindersEnabled) {
-      // Calculate when to send the first reminder
-      const firstReminderAt = new Date();
-      firstReminderAt.setHours(firstReminderAt.getHours() + (scheduledBooking.reminderFrequency || 24));
+      const firstReminderAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6 hours from now
       
       await storage.createPaymentReminder({
         bookingId: booking._id.toString(),
@@ -112,62 +92,52 @@ export async function processScheduledBooking(scheduledBookingId: string): Promi
         nextReminderAt: firstReminderAt
       });
     }
-    
-    console.log(`Successfully processed scheduled booking ${scheduledBookingId}, created booking with PNR ${pnr}`);
+
+    console.log(`Successfully processed scheduled booking ${scheduledBookingId} into booking ${booking._id}`);
     return booking;
+
   } catch (error) {
     console.error(`Error processing scheduled booking ${scheduledBookingId}:`, error);
-    await storage.updateScheduledBooking(scheduledBookingId, { status: 'failed' });
     return null;
   }
 }
 
 // Process all due scheduled bookings
-export async function processAllDueScheduledBookings(): Promise<number> {
-  const dueBookings = await storage.getScheduledBookingsDue();
-  console.log(`Found ${dueBookings.length} scheduled bookings due for processing`);
-  
-  let successCount = 0;
-  
-  for (const booking of dueBookings) {
-    const result = await processScheduledBooking(booking._id.toString());
-    if (result) {
-      successCount++;
-    }
-  }
-  
-  return successCount;
-}
+export async function processScheduledBookings(): Promise<{ successCount: number; errorCount: number }> {
+  try {
+    const dueBookings = await storage.getScheduledBookingsDue();
+    console.log(`Found ${dueBookings.length} scheduled bookings due for processing`);
 
-// Start the scheduled booking processor to run at regular intervals
-let schedulerInterval: NodeJS.Timeout | null = null;
+    let successCount = 0;
+    let errorCount = 0;
 
-export function startScheduledBookingProcessor(intervalMinutes = 1): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval);
-  }
-  
-  // Convert minutes to milliseconds
-  const intervalMs = intervalMinutes * 60 * 1000;
-  
-  schedulerInterval = setInterval(async () => {
-    try {
-      const processed = await processAllDueScheduledBookings();
-      if (processed > 0) {
-        console.log(`Processed ${processed} scheduled bookings`);
+    for (const booking of dueBookings) {
+      const result = await processScheduledBooking(booking._id.toString());
+      if (result) {
+        successCount++;
+      } else {
+        errorCount++;
       }
-    } catch (error) {
-      console.error('Error in scheduled booking processor:', error);
     }
-  }, intervalMs);
-  
-  console.log(`Started scheduled booking processor to run every ${intervalMinutes} minute(s)`);
+
+    console.log(`Processed ${successCount} bookings successfully, ${errorCount} failed`);
+    return { successCount, errorCount };
+
+  } catch (error) {
+    console.error('Error processing scheduled bookings:', error);
+    return { successCount: 0, errorCount: 1 };
+  }
 }
 
-export function stopScheduledBookingProcessor(): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval);
-    schedulerInterval = null;
-    console.log('Stopped scheduled booking processor');
-  }
+// Start the scheduled booking processor
+export function startScheduledBookingProcessor(intervalMinutes: number = 1): void {
+  console.log(`Starting scheduled booking processor (runs every ${intervalMinutes} minute(s))`);
+  
+  // Process immediately on startup
+  processScheduledBookings();
+  
+  // Then set up the interval
+  setInterval(() => {
+    processScheduledBookings();
+  }, intervalMinutes * 60 * 1000);
 }

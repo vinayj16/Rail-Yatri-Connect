@@ -404,8 +404,8 @@ export type Train = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
   number: string;
   name: string;
-  sourceStationId: string;
-  destinationStationId: string;
+  sourceStationId: mongoose.Types.ObjectId;
+  destinationStationId: mongoose.Types.ObjectId;
   departureTime: string;
   arrivalTime: string;
   duration: string;
@@ -428,8 +428,8 @@ export type InsertTrain = z.infer<typeof insertTrainSchema>;
 
 export type TrainStop = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  trainId: string;
-  stationId: string;
+  trainId: mongoose.Types.ObjectId;
+  stationId: mongoose.Types.ObjectId;
   arrivalTime?: string;
   departureTime?: string;
   dayCount: number;
@@ -441,7 +441,7 @@ export type InsertTrainStop = z.infer<typeof insertTrainStopSchema>;
 
 export type TrainClass = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  trainId: string;
+  trainId: mongoose.Types.ObjectId;
   classCode: string;
   className: string;
   fare: number;
@@ -453,8 +453,8 @@ export type InsertTrainClass = z.infer<typeof insertTrainClassSchema>;
 
 export type Booking = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  userId: string;
-  trainId: string;
+  userId: mongoose.Types.ObjectId;
+  trainId: mongoose.Types.ObjectId;
   journeyDate: string;
   pnr: string;
   status: string;
@@ -471,7 +471,7 @@ export type InsertBooking = z.infer<typeof insertBookingSchema>;
 
 export type Passenger = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  bookingId: string;
+  bookingId: mongoose.Types.ObjectId;
   name: string;
   age: number;
   gender: string;
@@ -488,9 +488,9 @@ export type PnrStatusParams = z.infer<typeof pnrStatusSchema>;
 
 export type TrainLocation = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  trainId: string;
-  currentStationId: string;
-  nextStationId: string;
+  trainId: mongoose.Types.ObjectId;
+  currentStationId: mongoose.Types.ObjectId;
+  nextStationId: mongoose.Types.ObjectId;
   status: string;
   delay: number;
   latitude?: string;
@@ -503,8 +503,8 @@ export type InsertTrainLocation = z.infer<typeof insertTrainLocationSchema>;
 
 export type ScheduledBooking = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  userId: string;
-  trainId: string;
+  userId: mongoose.Types.ObjectId;
+  trainId: mongoose.Types.ObjectId;
   journeyDate: string;
   classCode: string;
   scheduledAt: Date;
@@ -514,7 +514,7 @@ export type ScheduledBooking = mongoose.Document & {
   paymentRemindersEnabled: boolean;
   reminderFrequency: number;
   maxReminders: number;
-  bookingId?: string;
+  bookingId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -523,7 +523,7 @@ export type InsertScheduledBooking = z.infer<typeof insertScheduledBookingSchema
 
 export type PaymentReminder = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  bookingId: string;
+  bookingId: mongoose.Types.ObjectId;
   reminderCount: number;
   lastSentAt?: Date;
   nextReminderAt?: Date;
@@ -535,8 +535,8 @@ export type InsertPaymentReminder = z.infer<typeof insertPaymentReminderSchema>;
 
 export type TicketTransfer = mongoose.Document & {
   _id: mongoose.Types.ObjectId;
-  bookingId: string;
-  senderId: string;
+  bookingId: mongoose.Types.ObjectId;
+  senderId: mongoose.Types.ObjectId;
   receiverEmail: string;
   status: string;
   transferCode: string;

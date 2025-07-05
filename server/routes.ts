@@ -86,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get train and passenger details
-      const train = await storage.getTrainById(booking.trainId);
+      const train = await storage.getTrainById(booking.trainId.toString());
       const passengers = await storage.getPassengers(booking._id.toString());
       
       res.json({
@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get additional details for each booking
       const bookingsWithDetails = await Promise.all(
         bookings.map(async (booking) => {
-          const train = await storage.getTrainById(booking.trainId);
+          const train = await storage.getTrainById(booking.trainId.toString());
           const passengers = await storage.getPassengers(booking._id.toString());
           
           return {
@@ -302,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const booking = await storage.getBooking(bookingId);
       
       // Check if the booking belongs to the user
-      if (!booking || booking.userId !== req.user!._id.toString()) {
+      if (!booking || booking.userId.toString() !== req.user!._id.toString()) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -449,12 +449,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get train details for each booking
       const bookingsWithDetails = await Promise.all(
         scheduledBookings.map(async (booking) => {
-          const train = await storage.getTrainById(booking.trainId);
+          const train = await storage.getTrainById(booking.trainId.toString());
           
           // If booking has been processed, get the actual booking
           let actualBooking = null;
           if (booking.status === 'completed' && booking.bookingId) {
-            const completed = await storage.getBooking(booking.bookingId);
+            const completed = await storage.getBooking(booking.bookingId.toString());
             if (completed) {
               const passengers = await storage.getPassengers(completed._id.toString());
               actualBooking = {
@@ -494,7 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Scheduled booking not found" });
       }
       
-      if (scheduledBooking.userId !== req.user!._id.toString()) {
+      if (scheduledBooking.userId.toString() !== req.user!._id.toString()) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Scheduled booking not found" });
       }
       
-      if (scheduledBooking.userId !== req.user!._id.toString()) {
+      if (scheduledBooking.userId.toString() !== req.user!._id.toString()) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Booking not found" });
       }
       
-      if (booking.userId !== req.user!._id.toString()) {
+      if (booking && booking.userId.toString() !== req.user!._id.toString()) {
         return res.status(403).json({ message: "You are not authorized to transfer this ticket" });
       }
       
@@ -651,8 +651,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enhance with booking and passenger details
       const transfersWithDetails = await Promise.all(
         transfers.map(async (transfer) => {
-          const booking = await storage.getBooking(transfer.bookingId);
-          const train = booking ? await storage.getTrainById(booking.trainId) : null;
+          const booking = await storage.getBooking(transfer.bookingId.toString());
+          const train = booking ? await storage.getTrainById(booking.trainId.toString()) : null;
           const passengers = booking ? await storage.getPassengers(booking._id.toString()) : [];
           
           // For partial transfers, filter passengers
@@ -710,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process the action
       if (action === "accept") {
         // Get the booking
-        const booking = await storage.getBooking(transfer.bookingId);
+        const booking = await storage.getBooking(transfer.bookingId.toString());
         if (!booking) {
           return res.status(404).json({ message: "Booking not found" });
         }

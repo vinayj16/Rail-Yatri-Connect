@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 import dotenv from 'dotenv';
+import path from 'path';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // Default connection string for local development
 const DEFAULT_MONGODB_URI = "mongodb://localhost:27017/irctc_booking";

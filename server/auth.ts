@@ -8,11 +8,12 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { EmailService } from "./email-service";
 import MongoStore from "connect-mongo";
+import mongoose from "mongoose";
 
 declare global {
   namespace Express {
     interface User extends SelectUser {
-      _id: string;
+      _id: mongoose.Types.ObjectId;
     }
   }
 }
@@ -182,7 +183,7 @@ export function setupAuth(app: Express) {
       const { username, password, email, ...updateData } = req.body;
       
       // Update the user profile
-      const updatedUser = await storage.updateUser(req.user._id, updateData);
+      const updatedUser = await storage.updateUser(req.user._id.toString(), updateData);
       
       // Remove password from response
       const { password: pwd, ...userWithoutPassword } = updatedUser.toObject();
@@ -210,14 +211,14 @@ export function setupAuth(app: Express) {
       }
       
       // Verify current password
-      const user = await storage.getUser(req.user._id);
+      const user = await storage.getUser(req.user._id.toString());
       if (!user || !(await comparePasswords(currentPassword, user.password))) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
       
       // Update password
       const hashedNewPassword = await hashPassword(newPassword);
-      await storage.updateUserPassword(req.user._id, hashedNewPassword);
+      await storage.updateUserPassword(req.user._id.toString(), hashedNewPassword);
       
       res.json({ message: "Password changed successfully" });
     } catch (err) {

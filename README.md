@@ -33,36 +33,51 @@ A comprehensive railway booking platform built with React, TypeScript, Express.j
 ## Installation
 
 1. **Clone the repository**
-   ```bash
+```bash
    git clone https://github.com/vinayj16/Rail-Yatri-Connect.git
    cd Rail-Yatri-Connect
-   ```
+```
 
 2. **Install dependencies**
-   ```bash
-   npm install
+```bash
+npm install
    ```
 
 3. **Set up environment variables**
+   
+   **Option 1: Using PowerShell script (Recommended)**
+   ```powershell
+   .\setup-env.ps1
+   ```
+   
+   **Option 2: Manual setup**
    Create a `.env` file in the root directory:
    ```env
    MONGODB_URI=mongodb://localhost:27017/irctc_booking
-   SESSION_SECRET=your-session-secret
-   PERPLEXITY_API_KEY=your-perplexity-api-key
-   STRIPE_SECRET_KEY=your-stripe-secret-key
-   STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+   SESSION_SECRET=dev-secret-key-123-change-in-production
+   PERPLEXITY_API_KEY=your-perplexity-api-key-here
+   NODE_ENV=development
    ```
 
 4. **Start MongoDB**
    Make sure MongoDB is running locally or use a cloud service like MongoDB Atlas.
 
 5. **Run the development server**
-   ```bash
-   npm run dev
+
+   **Option 1: Using PowerShell script (Recommended)**
+   ```powershell
+   .\start-dev.ps1
    ```
 
-6. **Build for production**
+   **Option 2: Manual start**
    ```bash
+   $env:MONGODB_URI="mongodb://localhost:27017/irctc_booking"; $env:SESSION_SECRET="dev-secret-key-123"; npm run dev
+   ```
+
+   The server will start on **http://localhost:3001**
+
+6. **Build for production**
+```bash
    npm run build
    npm start
    ```
